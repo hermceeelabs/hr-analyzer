@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   ChevronDown,
+  Loader2,
 } from 'lucide-react';
 
 export default function AppHeader() {
@@ -21,6 +22,7 @@ export default function AppHeader() {
     clearUploadedData,
     dbError,
     isRlsBlocked,
+    isLoading,
     allRecords,
     filteredRecords,
   } = useHR();
@@ -29,33 +31,37 @@ export default function AppHeader() {
   const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false);
 
   return (
-    <header className="bg-white border-b border-navy-100 sticky top-0 z-30 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          
-          {/* Title & Subtitle */}
+    <header className="bg-white border-b border-navy-100 sticky top-0 z-30 shadow-sm shrink-0">
+      <div className="px-6 py-3">
+        <div className="flex items-center justify-between gap-4">
+
+          {/* Left: Title + record count */}
           <div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-brand-900 text-white flex items-center justify-center font-bold text-xl shadow-sm">
-                HR
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-navy-900 tracking-tight leading-tight">
-                  HR Analytics
-                </h1>
-                <p className="text-xs font-medium text-navy-500">
-                  Workforce Overview & Employee Insights
-                </p>
-              </div>
-            </div>
+            <h1 className="text-lg font-bold text-navy-900 leading-tight tracking-tight">
+              HR Analytics
+            </h1>
+            <p className="text-[11px] text-navy-500 font-medium">
+              {isLoading ? (
+                <span className="flex items-center gap-1.5 text-brand-600">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Loading data…
+                </span>
+              ) : (
+                <>
+                  Showing{' '}
+                  <span className="font-semibold text-navy-800">{filteredRecords.length}</span> of{' '}
+                  <span className="font-semibold text-navy-800">{allRecords.length}</span> employee records
+                </>
+              )}
+            </p>
           </div>
 
-          {/* Right Controls: Data Source Badge & Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3">
-            
-            {/* Data Source Mode Indicator */}
+          {/* Right Controls */}
+          <div className="flex flex-wrap items-center gap-2.5">
+
+            {/* Data Source Badge */}
             <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-xs transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-xs transition-colors ${
                 dataSourceMode === 'demo'
                   ? dbError || isRlsBlocked
                     ? 'bg-amber-50 text-amber-800 border-amber-200'
@@ -66,22 +72,22 @@ export default function AppHeader() {
               {dataSourceMode === 'demo' ? (
                 <>
                   <Database className="w-3.5 h-3.5" />
-                  <span>Data Source: Demo Database</span>
+                  <span>Demo DB</span>
                   {dbError || isRlsBlocked ? (
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 ml-1" />
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                   ) : (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 ml-1" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   )}
                 </>
               ) : (
                 <>
                   <FileSpreadsheet className="w-3.5 h-3.5" />
-                  <span>Data Source: Uploaded Dataset</span>
+                  <span>Uploaded Dataset</span>
                 </>
               )}
             </div>
 
-            {/* Return to Demo DB if in Uploaded mode */}
+            {/* Return to Demo DB */}
             {dataSourceMode === 'uploaded' && (
               <button
                 onClick={clearUploadedData}
@@ -93,37 +99,31 @@ export default function AppHeader() {
               </button>
             )}
 
-            {/* Download HR Template Dropdown */}
+            {/* Download Template Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setIsTemplateDropdownOpen(!isTemplateDropdownOpen)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-navy-200 bg-white text-navy-800 hover:bg-navy-50 text-xs font-semibold transition-all shadow-xs"
               >
                 <Download className="w-3.5 h-3.5 text-navy-600" />
-                <span>Download Template</span>
+                <span>Template</span>
                 <ChevronDown className="w-3 h-3 text-navy-400" />
               </button>
 
               {isTemplateDropdownOpen && (
                 <div
-                  className="absolute right-0 mt-2 w-48 bg-white border border-navy-200 rounded-lg shadow-lg py-1 z-50 text-xs"
+                  className="absolute right-0 mt-2 w-52 bg-white border border-navy-200 rounded-lg shadow-lg py-1 z-50 text-xs"
                   onMouseLeave={() => setIsTemplateDropdownOpen(false)}
                 >
                   <button
-                    onClick={() => {
-                      downloadHRTemplateCSV();
-                      setIsTemplateDropdownOpen(false);
-                    }}
+                    onClick={() => { downloadHRTemplateCSV(); setIsTemplateDropdownOpen(false); }}
                     className="w-full text-left px-4 py-2 text-navy-700 hover:bg-brand-50 hover:text-brand-900 flex items-center gap-2"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Download CSV Template</span>
                   </button>
                   <button
-                    onClick={() => {
-                      downloadHRTemplateXLSX();
-                      setIsTemplateDropdownOpen(false);
-                    }}
+                    onClick={() => { downloadHRTemplateXLSX(); setIsTemplateDropdownOpen(false); }}
                     className="w-full text-left px-4 py-2 text-navy-700 hover:bg-brand-50 hover:text-brand-900 flex items-center gap-2 border-t border-navy-100"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
@@ -133,7 +133,7 @@ export default function AppHeader() {
               )}
             </div>
 
-            {/* Upload Dataset Button */}
+            {/* Upload Dataset */}
             <button
               onClick={() => setIsUploadModalOpen(true)}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-brand-900 hover:bg-brand-800 text-white text-xs font-semibold transition-all shadow-sm"
@@ -143,23 +143,8 @@ export default function AppHeader() {
             </button>
           </div>
         </div>
-
-        {/* Record count summary bar */}
-        <div className="mt-3 pt-3 border-t border-navy-100 flex items-center justify-between text-xs text-navy-500 font-medium">
-          <div>
-            Showing <span className="font-semibold text-navy-900">{filteredRecords.length}</span> of{' '}
-            <span className="font-semibold text-navy-900">{allRecords.length}</span> total employee records
-          </div>
-          {dbError && dataSourceMode === 'demo' && (
-            <div className="text-amber-700 flex items-center gap-1 font-medium">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              <span>{dbError}</span>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Upload Modal */}
       {isUploadModalOpen && <UploadModal onClose={() => setIsUploadModalOpen(false)} />}
     </header>
   );

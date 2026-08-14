@@ -15,7 +15,7 @@ import DemographicsTab from '@/components/dashboard/DemographicsTab';
 import EmployeeTable from '@/components/employees/EmployeeTable';
 import DataQualityView from '@/components/quality/DataQualityView';
 import ReportBuilder from '@/components/reports/ReportBuilder';
-import { AlertTriangle, RefreshCw, Database, Terminal, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Terminal } from 'lucide-react';
 
 export default function HRAnalyticsApp() {
   const {
@@ -25,7 +25,6 @@ export default function HRAnalyticsApp() {
     dbError,
     isRlsBlocked,
     dataSourceMode,
-    allRecords,
     refetchDemoData,
   } = useHR();
 
@@ -64,107 +63,93 @@ export default function HRAnalyticsApp() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
-      
-      {/* Top Application Shell Header */}
-      <AppHeader />
+    /* Full-viewport shell — sidebar fixed on left, right column scrolls */
+    <div className="flex h-screen overflow-hidden bg-slate-50 font-sans">
 
-      {/* Main Layout Area */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto my-4 px-4 sm:px-6 lg:px-8 gap-6">
-        
-        {/* Navigation Sidebar */}
-        <AppSidebar />
+      {/* ── Fixed sidebar — full viewport height, never scrolls ── */}
+      <AppSidebar />
 
-        {/* Workspace Main Panel */}
-        <main className="flex-1 min-w-0">
-          
-          {/* Loading State */}
-          {isLoading && (
-            <div className="bg-white rounded-xl border border-navy-100 p-12 text-center shadow-xs my-8 space-y-3">
-              <RefreshCw className="w-8 h-8 text-brand-600 animate-spin mx-auto" />
-              <div className="text-sm font-bold text-navy-900">Connecting to Supabase public.employees...</div>
-              <div className="text-xs text-navy-500">Retrieving HR records and initializing analytics engine...</div>
-            </div>
-          )}
+      {/* ── Right column: header pinned at top, content scrolls below ── */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
 
-          {/* Database Connection Error State */}
-          {!isLoading && dbError && dataSourceMode === 'demo' && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 shadow-xs my-4 text-amber-950 space-y-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-bold text-base text-amber-900">Supabase Connection Notice</h3>
-                  <p className="text-xs text-amber-800 mt-1">{dbError}</p>
+        {/* Sticky header — scoped to the right column only */}
+        <AppHeader />
+
+        {/* Scrollable content area */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
+
+            {/* Database Connection Error */}
+            {!isLoading && dbError && dataSourceMode === 'demo' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 shadow-xs text-amber-950 space-y-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-bold text-base text-amber-900">Supabase Connection Notice</h3>
+                    <p className="text-xs text-amber-800 mt-1">{dbError}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 pt-2 border-t border-amber-200/80">
+                  <button
+                    onClick={() => refetchDemoData()}
+                    className="px-4 py-2 rounded-lg bg-amber-900 text-white font-semibold text-xs flex items-center gap-1.5 hover:bg-amber-800 shadow-xs"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Retry Connection</span>
+                  </button>
                 </div>
               </div>
+            )}
 
-              <div className="flex items-center gap-3 pt-2 border-t border-amber-200/80">
-                <button
-                  onClick={() => refetchDemoData()}
-                  className="px-4 py-2 rounded-lg bg-amber-900 text-white font-semibold text-xs flex items-center gap-1.5 hover:bg-amber-800 shadow-xs"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Retry Connection</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* RLS Policy Guidance Notice (When connected but 0 records returned due to Supabase RLS) */}
-          {!isLoading && !dbError && isRlsBlocked && dataSourceMode === 'demo' && (
-            <div className="bg-amber-50/80 border border-amber-300 rounded-xl p-6 shadow-xs mb-6 text-amber-950 space-y-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-bold text-base text-amber-950">
-                    Supabase Row Level Security (RLS) Policy Required
-                  </h3>
-                  <p className="text-xs text-amber-900 mt-1 leading-relaxed">
-                    Connected to <code className="bg-white border px-1.5 py-0.5 rounded font-mono text-navy-900">public.employees</code>, but 0 records were returned because Row Level Security (RLS) is enabled on the table without a public SELECT policy.
-                  </p>
+            {/* RLS Policy Guidance Notice */}
+            {!isLoading && !dbError && isRlsBlocked && dataSourceMode === 'demo' && (
+              <div className="bg-amber-50/80 border border-amber-300 rounded-xl p-6 shadow-xs text-amber-950 space-y-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-bold text-base text-amber-950">
+                      Supabase Row Level Security (RLS) Policy Required
+                    </h3>
+                    <p className="text-xs text-amber-900 mt-1 leading-relaxed">
+                      Connected to <code className="bg-white border px-1.5 py-0.5 rounded font-mono text-navy-900">public.employees</code>, but 0 records were returned because Row Level Security (RLS) is enabled without a public SELECT policy.
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="bg-navy-900 text-slate-200 p-4 rounded-lg font-mono text-xs space-y-2 border border-navy-800">
-                <div className="text-navy-400 font-sans text-[11px] flex items-center gap-1.5">
-                  <Terminal className="w-3.5 h-3.5 text-brand-400" />
-                  <span>Run this SQL command in your Supabase SQL Editor:</span>
-                </div>
-                <pre className="text-emerald-400 select-all overflow-x-auto p-2 bg-navy-950 rounded">
+                <div className="bg-navy-900 text-slate-200 p-4 rounded-lg font-mono text-xs space-y-2 border border-navy-800">
+                  <div className="text-navy-400 font-sans text-[11px] flex items-center gap-1.5">
+                    <Terminal className="w-3.5 h-3.5 text-brand-400" />
+                    <span>Run this SQL command in your Supabase SQL Editor:</span>
+                  </div>
+                  <pre className="text-emerald-400 select-all overflow-x-auto p-2 bg-navy-950 rounded">
 {`CREATE POLICY "Allow public read access"
 ON public.employees
 FOR SELECT
 TO anon, authenticated
 USING (true);`}
-                </pre>
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <div className="text-[11px] text-amber-800">
-                  After running the SQL query above in Supabase, click <span className="font-semibold">Refresh Data</span> below.
+                  </pre>
                 </div>
-                <button
-                  onClick={() => refetchDemoData()}
-                  className="px-4 py-2 rounded-lg bg-amber-900 hover:bg-amber-800 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Refresh Data</span>
-                </button>
+
+                <div className="flex items-center justify-between pt-1">
+                  <div className="text-[11px] text-amber-800">
+                    After running the SQL above in Supabase, click <span className="font-semibold">Refresh Data</span>.
+                  </div>
+                  <button
+                    onClick={() => refetchDemoData()}
+                    className="px-4 py-2 rounded-lg bg-amber-900 hover:bg-amber-800 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Refresh Data</span>
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Main Application Content */}
-          {!isLoading && (
-            <>
-              {/* Interactive Filter Panel (Available on Dashboard and Employees tabs) */}
-              {(activeTab === 'dashboard' || activeTab === 'employees') && <FilterPanel />}
+            {/* Filter Panel + Main Content — render even while loading so layout doesn't jump */}
+            {(activeTab === 'dashboard' || activeTab === 'employees') && <FilterPanel />}
+            {renderActiveMainTab()}
 
-              {/* View Container */}
-              {renderActiveMainTab()}
-            </>
-          )}
-
+          </div>
         </main>
       </div>
     </div>
