@@ -22,6 +22,7 @@ import { Printer, Edit3, Database, FileSpreadsheet, TrendingUp, TrendingDown, Mi
 
 interface CustomReportWithComparison extends CustomReport {
   enableComparison?: boolean;
+  comparisonMode?: 'cohort' | 'date';
   periodALabel?: string;
   periodBLabel?: string;
   kpisA?: any;
@@ -230,15 +231,21 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
                           </div>
                         </div>
 
-                        {/* Corrected Delta Badge */}
+                        {/* Comparison Stat Difference / Trend Badge */}
                         <div className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 shrink-0 ${
-                          meta.badgeType === 'success'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : meta.badgeType === 'danger'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-slate-100 text-slate-700'
+                          report.comparisonMode === 'date'
+                            ? meta.badgeType === 'success'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : meta.badgeType === 'danger'
+                              ? 'bg-rose-100 text-rose-800'
+                              : 'bg-slate-100 text-slate-700'
+                            : 'bg-slate-100 text-slate-700 border border-slate-200'
                         }`}>
-                          <IconComponent className="w-3 h-3" />
+                          {report.comparisonMode === 'date' ? (
+                            <IconComponent className="w-3 h-3" />
+                          ) : (
+                            <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-tighter mr-0.5">Diff</span>
+                          )}
                           <span>{meta.text}</span>
                         </div>
                       </div>

@@ -34,10 +34,15 @@ export default function ReportBuilder() {
 
   // Period / Cohort Comparison State
   const [enableComparison, setEnableComparison] = useState(false);
+  const [comparisonMode, setComparisonMode] = useState<'cohort' | 'date'>('cohort');
   const [periodAFilter, setPeriodAFilter] = useState<'All' | 'Sales' | 'Research & Development' | 'Human Resources'>('Sales');
   const [periodBFilter, setPeriodBFilter] = useState<'All' | 'Sales' | 'Research & Development' | 'Human Resources'>('Research & Development');
   const [periodALabel, setPeriodALabel] = useState('Sales Dept');
   const [periodBLabel, setPeriodBLabel] = useState('R&D Dept');
+
+  // Date/Time Period Filters
+  const [dateRangeA, setDateRangeA] = useState({ start: '2025-01-01', end: '2025-12-31' });
+  const [dateRangeB, setDateRangeB] = useState({ start: '2026-01-01', end: '2026-12-31' });
 
   // Promotion Rule Config
   const [promoConfig, setPromoConfig] = useState<PromotionRuleConfig>(DEFAULT_PROMOTION_CONFIG);
@@ -133,6 +138,7 @@ export default function ReportBuilder() {
       commentary,
       dataSource: dataSourceMode,
       enableComparison,
+      comparisonMode: enableComparison ? comparisonMode : undefined,
       periodALabel: enableComparison ? periodALabel : undefined,
       periodBLabel: enableComparison ? periodBLabel : undefined,
       kpisA: enableComparison ? kpisA : undefined,
@@ -289,48 +295,143 @@ export default function ReportBuilder() {
               </div>
 
               {enableComparison && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-brand-200/60 dark:border-slate-700">
-                  <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
-                    <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Primary Group (Cohort A)</label>
-                    <input
-                      type="text"
-                      value={periodALabel}
-                      onChange={(e) => setPeriodALabel(e.target.value)}
-                      placeholder="Label e.g. Q1 2026 or Sales"
-                      className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs"
-                    />
-                    <select
-                      value={periodAFilter}
-                      onChange={(e) => setPeriodAFilter(e.target.value as any)}
-                      className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs font-semibold"
-                    >
-                      <option value="All">All Departments</option>
-                      <option value="Sales">Sales</option>
-                      <option value="Research & Development">Research & Development</option>
-                      <option value="Human Resources">Human Resources</option>
-                    </select>
+                <div className="space-y-3 pt-2 border-t border-brand-200/60 dark:border-slate-700">
+                  {/* Mode Selector Toggle */}
+                  <div className="flex items-center gap-4 bg-white dark:bg-slate-900 p-2 rounded-lg border border-navy-200 dark:border-slate-800 text-[11px]">
+                    <span className="font-bold text-navy-700 dark:text-slate-300">Comparison Mode:</span>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="comparisonMode"
+                        value="cohort"
+                        checked={comparisonMode === 'cohort'}
+                        onChange={() => setComparisonMode('cohort')}
+                        className="text-brand-600 focus:ring-brand-500"
+                      />
+                      <span className="font-semibold text-navy-900 dark:text-white">Segment / Cohort (Stat Diff)</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="comparisonMode"
+                        value="date"
+                        checked={comparisonMode === 'date'}
+                        onChange={() => setComparisonMode('date')}
+                        className="text-brand-600 focus:ring-brand-500"
+                      />
+                      <span className="font-semibold text-navy-900 dark:text-white">Date / Time Period (Trend ▲▼)</span>
+                    </label>
                   </div>
 
-                  <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
-                    <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Comparison Group (Cohort B)</label>
-                    <input
-                      type="text"
-                      value={periodBLabel}
-                      onChange={(e) => setPeriodBLabel(e.target.value)}
-                      placeholder="Label e.g. Q2 2026 or R&D"
-                      className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs"
-                    />
-                    <select
-                      value={periodBFilter}
-                      onChange={(e) => setPeriodBFilter(e.target.value as any)}
-                      className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs font-semibold"
-                    >
-                      <option value="All">All Departments</option>
-                      <option value="Sales">Sales</option>
-                      <option value="Research & Development">Research & Development</option>
-                      <option value="Human Resources">Human Resources</option>
-                    </select>
-                  </div>
+                  {comparisonMode === 'cohort' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
+                        <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Primary Segment (Group A)</label>
+                        <input
+                          type="text"
+                          value={periodALabel}
+                          onChange={(e) => setPeriodALabel(e.target.value)}
+                          placeholder="Label e.g. Sales Dept"
+                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs"
+                        />
+                        <select
+                          value={periodAFilter}
+                          onChange={(e) => setPeriodAFilter(e.target.value as any)}
+                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs font-semibold"
+                        >
+                          <option value="All">All Departments</option>
+                          <option value="Sales">Sales</option>
+                          <option value="Research & Development">Research & Development</option>
+                          <option value="Human Resources">Human Resources</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
+                        <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Comparison Segment (Group B)</label>
+                        <input
+                          type="text"
+                          value={periodBLabel}
+                          onChange={(e) => setPeriodBLabel(e.target.value)}
+                          placeholder="Label e.g. R&D Dept"
+                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs"
+                        />
+                        <select
+                          value={periodBFilter}
+                          onChange={(e) => setPeriodBFilter(e.target.value as any)}
+                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs font-semibold"
+                        >
+                          <option value="All">All Departments</option>
+                          <option value="Sales">Sales</option>
+                          <option value="Research & Development">Research & Development</option>
+                          <option value="Human Resources">Human Resources</option>
+                        </select>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
+                        <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Baseline Period (Time Period A)</label>
+                        <input
+                          type="text"
+                          value={periodALabel}
+                          onChange={(e) => setPeriodALabel(e.target.value)}
+                          placeholder="e.g. Q1 2025"
+                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs mb-1"
+                        />
+                        <div className="grid grid-cols-2 gap-2 text-[10px]">
+                          <div>
+                            <span className="text-navy-500 font-semibold">Start:</span>
+                            <input
+                              type="date"
+                              value={dateRangeA.start}
+                              onChange={(e) => setDateRangeA((prev) => ({ ...prev, start: e.target.value }))}
+                              className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-navy-500 font-semibold">End:</span>
+                            <input
+                              type="date"
+                              value={dateRangeA.end}
+                              onChange={(e) => setDateRangeA((prev) => ({ ...prev, end: e.target.value }))}
+                              className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
+                        <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Current Period (Time Period B)</label>
+                        <input
+                          type="text"
+                          value={periodBLabel}
+                          onChange={(e) => setPeriodBLabel(e.target.value)}
+                          placeholder="e.g. Q1 2026"
+                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs mb-1"
+                        />
+                        <div className="grid grid-cols-2 gap-2 text-[10px]">
+                          <div>
+                            <span className="text-navy-500 font-semibold">Start:</span>
+                            <input
+                              type="date"
+                              value={dateRangeB.start}
+                              onChange={(e) => setDateRangeB((prev) => ({ ...prev, start: e.target.value }))}
+                              className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-navy-500 font-semibold">End:</span>
+                            <input
+                              type="date"
+                              value={dateRangeB.end}
+                              onChange={(e) => setDateRangeB((prev) => ({ ...prev, end: e.target.value }))}
+                              className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
