@@ -40,9 +40,10 @@ export default function ReportBuilder() {
   const [periodALabel, setPeriodALabel] = useState('Sales Dept');
   const [periodBLabel, setPeriodBLabel] = useState('R&D Dept');
 
-  // Date/Time Period Filters
-  const [dateRangeA, setDateRangeA] = useState({ start: '2025-01-01', end: '2025-12-31' });
-  const [dateRangeB, setDateRangeB] = useState({ start: '2026-01-01', end: '2026-12-31' });
+  // Date/Time Period Filters — defaults cover typical hire cohorts in the IBM dataset
+  const CURRENT_YEAR = new Date().getFullYear();
+  const [dateRangeA, setDateRangeA] = useState({ start: `${CURRENT_YEAR - 15}-01-01`, end: `${CURRENT_YEAR - 8}-12-31` });
+  const [dateRangeB, setDateRangeB] = useState({ start: `${CURRENT_YEAR - 7}-01-01`, end: `${CURRENT_YEAR}-12-31` });
 
   // Promotion Rule Config
   const [promoConfig, setPromoConfig] = useState<PromotionRuleConfig>(DEFAULT_PROMOTION_CONFIG);
@@ -99,16 +100,38 @@ export default function ReportBuilder() {
     'Career & Promotion Review',
   ];
 
+  // Estimated hire year helper (dataset has yearsAtCompany, not hireDate)
+  const REFERENCE_YEAR = new Date().getFullYear();
+  const getHireYear = (yearsAtCompany: number) => REFERENCE_YEAR - Math.round(yearsAtCompany);
+
   // Calculated Period Comparisons
   const recordsA = useMemo(() => {
-    if (!enableComparison || periodAFilter === 'All') return allRecords;
+    if (!enableComparison) return allRecords;
+    if (comparisonMode === 'date') {
+      const startYear = new Date(dateRangeA.start).getFullYear();
+      const endYear = new Date(dateRangeA.end).getFullYear();
+      return allRecords.filter(r => {
+        const hireYear = getHireYear(r.yearsAtCompany);
+        return hireYear >= startYear && hireYear <= endYear;
+      });
+    }
+    if (periodAFilter === 'All') return allRecords;
     return allRecords.filter(r => r.department === periodAFilter);
-  }, [allRecords, enableComparison, periodAFilter]);
+  }, [allRecords, enableComparison, comparisonMode, periodAFilter, dateRangeA]);
 
   const recordsB = useMemo(() => {
-    if (!enableComparison || periodBFilter === 'All') return allRecords;
+    if (!enableComparison) return allRecords;
+    if (comparisonMode === 'date') {
+      const startYear = new Date(dateRangeB.start).getFullYear();
+      const endYear = new Date(dateRangeB.end).getFullYear();
+      return allRecords.filter(r => {
+        const hireYear = getHireYear(r.yearsAtCompany);
+        return hireYear >= startYear && hireYear <= endYear;
+      });
+    }
+    if (periodBFilter === 'All') return allRecords;
     return allRecords.filter(r => r.department === periodBFilter);
-  }, [allRecords, enableComparison, periodBFilter]);
+  }, [allRecords, enableComparison, comparisonMode, periodBFilter, dateRangeB]);
 
   const kpisA = useMemo(() => calculateOverallKPIs(recordsA), [recordsA]);
   const kpisB = useMemo(() => calculateOverallKPIs(recordsB), [recordsB]);
@@ -132,6 +155,8 @@ export default function ReportBuilder() {
       comparisonMode: enableComparison ? comparisonMode : undefined,
       periodALabel: enableComparison ? periodALabel : undefined,
       periodBLabel: enableComparison ? periodBLabel : undefined,
+      dateRangeA: enableComparison && comparisonMode === 'date' ? dateRangeA : undefined,
+      dateRangeB: enableComparison && comparisonMode === 'date' ? dateRangeB : undefined,
       kpisA: enableComparison ? kpisA : undefined,
       kpisB: enableComparison ? kpisB : undefined,
       recordsA: enableComparison ? recordsA : undefined,
@@ -360,68 +385,84 @@ export default function ReportBuilder() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
-                        <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Baseline Period (Time Period A)</label>
-                        <input
-                          type="text"
-                          value={periodALabel}
-                          onChange={(e) => setPeriodALabel(e.target.value)}
-                          placeholder="e.g. Q1 2025"
-                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs mb-1"
-                        />
-                        <div className="grid grid-cols-2 gap-2 text-[10px]">
-                          <div>
-                            <span className="text-navy-500 font-semibold">Start:</span>
-                            <input
-                              type="date"
-                              value={dateRangeA.start}
-                              onChange={(e) => setDateRangeA((prev) => ({ ...prev, start: e.target.value }))}
-                              className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs"
-                            />
-                          </div>
-                          <div>
-                            <span className="text-navy-500 font-semibold">End:</span>
-                            <input
-                              type="date"
-                              value={dateRangeA.end}
-                              onChange={(e) => setDateRangeA((prev) => ({ ...prev, end: e.target.value }))}
-                              className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs"
-                            />
-                          </div>
-                        </div>
-                      </div>
+                       <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
+                         <div className="flex items-center justify-between">
+                           <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Baseline Period (Group A)</label>
+                           <span className="text-[10px] font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
+                             {recordsA.length} employees
+                           </span>
+                         </div>
+                         <input
+                           type="text"
+                           value={periodALabel}
+                           onChange={(e) => setPeriodALabel(e.target.value)}
+                           placeholder="e.g. 2010–2017 Cohort"
+                           className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs mb-1"
+                         />
+                         <div className="grid grid-cols-2 gap-2 text-[10px]">
+                           <div>
+                             <span className="text-navy-500 font-semibold">Hire Start:</span>
+                             <input
+                               type="date"
+                               value={dateRangeA.start}
+                               onChange={(e) => setDateRangeA((prev) => ({ ...prev, start: e.target.value }))}
+                               className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs mt-0.5"
+                             />
+                           </div>
+                           <div>
+                             <span className="text-navy-500 font-semibold">Hire End:</span>
+                             <input
+                               type="date"
+                               value={dateRangeA.end}
+                               onChange={(e) => setDateRangeA((prev) => ({ ...prev, end: e.target.value }))}
+                               className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs mt-0.5"
+                             />
+                           </div>
+                         </div>
+                         <p className="text-[9px] text-navy-400 leading-tight">
+                           Filters employees by estimated hire year ({CURRENT_YEAR} − yearsAtCompany)
+                         </p>
+                       </div>
 
-                      <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
-                        <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Current Period (Time Period B)</label>
-                        <input
-                          type="text"
-                          value={periodBLabel}
-                          onChange={(e) => setPeriodBLabel(e.target.value)}
-                          placeholder="e.g. Q1 2026"
-                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs mb-1"
-                        />
-                        <div className="grid grid-cols-2 gap-2 text-[10px]">
-                          <div>
-                            <span className="text-navy-500 font-semibold">Start:</span>
-                            <input
-                              type="date"
-                              value={dateRangeB.start}
-                              onChange={(e) => setDateRangeB((prev) => ({ ...prev, start: e.target.value }))}
-                              className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs"
-                            />
-                          </div>
-                          <div>
-                            <span className="text-navy-500 font-semibold">End:</span>
-                            <input
-                              type="date"
-                              value={dateRangeB.end}
-                              onChange={(e) => setDateRangeB((prev) => ({ ...prev, end: e.target.value }))}
-                              className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                       <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
+                         <div className="flex items-center justify-between">
+                           <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Current Period (Group B)</label>
+                           <span className="text-[10px] font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
+                             {recordsB.length} employees
+                           </span>
+                         </div>
+                         <input
+                           type="text"
+                           value={periodBLabel}
+                           onChange={(e) => setPeriodBLabel(e.target.value)}
+                           placeholder="e.g. 2018–Present Cohort"
+                           className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs mb-1"
+                         />
+                         <div className="grid grid-cols-2 gap-2 text-[10px]">
+                           <div>
+                             <span className="text-navy-500 font-semibold">Hire Start:</span>
+                             <input
+                               type="date"
+                               value={dateRangeB.start}
+                               onChange={(e) => setDateRangeB((prev) => ({ ...prev, start: e.target.value }))}
+                               className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs mt-0.5"
+                             />
+                           </div>
+                           <div>
+                             <span className="text-navy-500 font-semibold">Hire End:</span>
+                             <input
+                               type="date"
+                               value={dateRangeB.end}
+                               onChange={(e) => setDateRangeB((prev) => ({ ...prev, end: e.target.value }))}
+                               className="w-full p-1 border rounded dark:bg-slate-800 dark:border-slate-700 text-xs mt-0.5"
+                             />
+                           </div>
+                         </div>
+                         <p className="text-[9px] text-navy-400 leading-tight">
+                           Filters employees by estimated hire year ({CURRENT_YEAR} − yearsAtCompany)
+                         </p>
+                       </div>
+                     </div>
                   )}
                 </div>
               )}

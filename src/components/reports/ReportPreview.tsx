@@ -25,6 +25,8 @@ interface CustomReportWithComparison extends CustomReport {
   comparisonMode?: 'cohort' | 'date';
   periodALabel?: string;
   periodBLabel?: string;
+  dateRangeA?: { start: string; end: string };
+  dateRangeB?: { start: string; end: string };
   kpisA?: any;
   kpisB?: any;
 }
@@ -199,9 +201,16 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
                 {report.enableComparison ? 'Period / Cohort Comparative Metrics' : 'Key Metrics'}
               </h2>
               {report.enableComparison && (
-                <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
-                  {report.periodALabel || 'Cohort A'} vs {report.periodBLabel || 'Cohort B'}
-                </span>
+                <div className="flex flex-col items-end gap-0.5">
+                  <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
+                    {report.periodALabel || 'Group A'} vs {report.periodBLabel || 'Group B'}
+                  </span>
+                  {report.comparisonMode === 'date' && report.dateRangeA && report.dateRangeB && (
+                    <span className="text-[9px] text-navy-400 font-medium">
+                      {report.dateRangeA.start} → {report.dateRangeA.end} &nbsp;|&nbsp; {report.dateRangeB.start} → {report.dateRangeB.end}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 

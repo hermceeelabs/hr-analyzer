@@ -173,6 +173,8 @@ export interface CustomReport {
   comparisonMode?: 'cohort' | 'date';
   periodALabel?: string;
   periodBLabel?: string;
+  dateRangeA?: { start: string; end: string };
+  dateRangeB?: { start: string; end: string };
   kpisA?: OverallKPIs;
   kpisB?: OverallKPIs;
   recordsA?: EmployeeRecord[];
