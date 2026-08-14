@@ -56,7 +56,11 @@ export function normalizeRawRecord(raw: EmployeeRawRecord, index: number): Emplo
   }
 
   const yearsAtCompany = getNum(raw.YearsAtCompany ?? raw.yearsAtCompany, 'YearsAtCompany', 0);
-  const yearsSincePromotion = getNum(raw.YearsSinceLastPromotion ?? raw.yearsSinceLastPromotion, 'YearsSinceLastPromotion', 0);
+  const yearsSinceLastPromotion = getNum(
+    raw.YearsSinceLastPromotion ?? raw.yearsSinceLastPromotion ?? raw.yearsSincePromotion,
+    'YearsSinceLastPromotion',
+    0
+  );
 
   // Use centralized rules engine for promotion candidacy
   const promotionCandidateFlag = isPromotionCandidate({ yearsAtCompany, yearsSinceLastPromotion });
@@ -119,7 +123,7 @@ export function normalizeRawRecord(raw: EmployeeRawRecord, index: number): Emplo
     workLifeBalance: getNum(raw.WorkLifeBalance ?? raw.workLifeBalance, 'WorkLifeBalance', 3),
     yearsAtCompany,
     yearsInCurrentRole: getNum(raw.YearsInCurrentRole ?? raw.yearsInCurrentRole, 'YearsInCurrentRole', 0),
-    yearsSinceLastPromotion: yearsSincePromotion,
+    yearsSinceLastPromotion,
     yearsWithCurrManager: getNum(raw.YearsWithCurrManager ?? raw.yearsWithCurrManager, 'YearsWithCurrManager', 0),
     promotionCandidateFlag,
     distanceBand,
