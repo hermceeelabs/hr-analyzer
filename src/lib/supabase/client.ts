@@ -26,7 +26,9 @@ export function initSupabaseClient(): SupabaseClient | null {
     cachedClient = createClient(url, key);
     return cachedClient;
   } catch (error) {
-    console.error('Failed to initialize Supabase client:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Failed to initialize Supabase client:', error);
+    }
     return null;
   }
 }

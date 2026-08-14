@@ -19,11 +19,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  PieChart,
-  Pie,
-  Cell,
   CartesianGrid,
-  Legend,
 } from 'recharts';
 import {
   Users,
@@ -34,9 +30,9 @@ import {
   Clock,
   Zap,
   Smile,
+  PieChart as PieIcon,
+  Heart,
 } from 'lucide-react';
-
-const COLOR_PALETTE = ['#0062d6', '#369eff', '#7cc2ff', '#0b3876', '#1e293b', '#64748b'];
 
 export default function OverviewTab() {
   const { kpis, filteredRecords } = useHR();
@@ -47,7 +43,8 @@ export default function OverviewTab() {
   const ageData = groupByAgeGroup(filteredRecords);
   const genderData = groupByGender(filteredRecords);
   const maritalData = groupByMaritalStatus(filteredRecords);
-  const eduData = groupByEducationField(filteredRecords);
+
+  const totalHeadcount = filteredRecords.length || 1;
 
   return (
     <div className="space-y-6">
@@ -127,13 +124,62 @@ export default function OverviewTab() {
         />
       </div>
 
+      {/* Compact Demographic Stat Rows (Replaces oversized Donut Chart cards) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        {/* Gender Stat Row */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-4 shadow-xs transition-colors duration-200">
+          <div className="flex items-center gap-2 mb-3">
+            <PieIcon className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+            <h3 className="text-xs font-bold text-navy-900 dark:text-white uppercase tracking-wider">Gender Distribution Summary</h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {genderData.map((g) => {
+              const pct = ((g.total / totalHeadcount) * 100).toFixed(1);
+              return (
+                <div key={g.category} className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{g.category}</div>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="text-base font-extrabold text-slate-900 dark:text-white">{g.total}</span>
+                    <span className="text-xs font-bold text-brand-600 dark:text-brand-400">{pct}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Marital Status Stat Row */}
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-4 shadow-xs transition-colors duration-200">
+          <div className="flex items-center gap-2 mb-3">
+            <Heart className="w-4 h-4 text-rose-500" />
+            <h3 className="text-xs font-bold text-navy-900 dark:text-white uppercase tracking-wider">Marital Status Breakdown</h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {maritalData.map((m) => {
+              const pct = ((m.total / totalHeadcount) * 100).toFixed(1);
+              return (
+                <div key={m.category} className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200/60 dark:border-slate-700">
+                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{m.category}</div>
+                  <div className="flex items-baseline justify-between mt-1">
+                    <span className="text-base font-extrabold text-slate-900 dark:text-white">{m.total}</span>
+                    <span className="text-xs font-bold text-purple-600 dark:text-purple-400">{pct}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+      </div>
+
       {/* Visualizations Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Department Breakdown */}
-        <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-navy-900 mb-1">Headcount by Department</h3>
-          <p className="text-xs text-navy-500 mb-4">Total workforce distribution across departments</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs transition-colors duration-200">
+          <h3 className="text-sm font-bold text-navy-900 dark:text-white mb-1">Headcount by Department</h3>
+          <p className="text-xs text-navy-500 dark:text-slate-400 mb-4">Total workforce distribution across departments</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={deptData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
@@ -151,9 +197,9 @@ export default function OverviewTab() {
         </div>
 
         {/* Job Role Breakdown */}
-        <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-navy-900 mb-1">Headcount by Job Role</h3>
-          <p className="text-xs text-navy-500 mb-4">Distribution across key organizational roles</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs transition-colors duration-200">
+          <h3 className="text-sm font-bold text-navy-900 dark:text-white mb-1">Headcount by Job Role</h3>
+          <p className="text-xs text-navy-500 dark:text-slate-400 mb-4">Distribution across key organizational roles</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={roleData} layout="vertical" margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
@@ -170,41 +216,10 @@ export default function OverviewTab() {
           </div>
         </div>
 
-        {/* Gender Breakdown (Donut) */}
-        <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-navy-900 mb-1">Gender Distribution</h3>
-          <p className="text-xs text-navy-500 mb-4">Workforce headcount split by gender</p>
-          <div className="h-64 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={genderData}
-                  dataKey="total"
-                  nameKey="category"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={85}
-                  paddingAngle={4}
-                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                >
-                  {genderData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLOR_PALETTE[index % COLOR_PALETTE.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(val: number) => [`${val} employees`, 'Headcount']}
-                  contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
         {/* Age Group Breakdown */}
-        <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-navy-900 mb-1">Age Group Distribution</h3>
-          <p className="text-xs text-navy-500 mb-4">Generational breakdown of the organization</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs transition-colors duration-200">
+          <h3 className="text-sm font-bold text-navy-900 dark:text-white mb-1">Age Group Distribution</h3>
+          <p className="text-xs text-navy-500 dark:text-slate-400 mb-4">Generational breakdown of the organization</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={ageData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
@@ -222,9 +237,9 @@ export default function OverviewTab() {
         </div>
 
         {/* Job Level Breakdown */}
-        <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-navy-900 mb-1">Employees by Job Level</h3>
-          <p className="text-xs text-navy-500 mb-4">Hierarchical distribution across Levels 1-5</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs transition-colors duration-200">
+          <h3 className="text-sm font-bold text-navy-900 dark:text-white mb-1">Employees by Job Level</h3>
+          <p className="text-xs text-navy-500 dark:text-slate-400 mb-4">Hierarchical distribution across Levels 1-5</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={levelData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
@@ -237,35 +252,6 @@ export default function OverviewTab() {
                 />
                 <Bar dataKey="total" fill="#7cc2ff" radius={[4, 4, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Marital Status Breakdown */}
-        <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-navy-900 mb-1">Marital Status Breakdown</h3>
-          <p className="text-xs text-navy-500 mb-4">Demographic marital distribution</p>
-          <div className="h-64 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={maritalData}
-                  dataKey="total"
-                  nameKey="category"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                >
-                  {maritalData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLOR_PALETTE[(index + 2) % COLOR_PALETTE.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(val: number) => [`${val} employees`, 'Headcount']}
-                  contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
-                />
-              </PieChart>
             </ResponsiveContainer>
           </div>
         </div>

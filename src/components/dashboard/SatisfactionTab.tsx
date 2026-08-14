@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useHR } from '@/lib/store/useHRStore';
 import { groupByDepartment, groupByJobRole, groupByJobLevel } from '@/lib/analytics/engine';
 import {
@@ -11,23 +11,18 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
   Legend,
 } from 'recharts';
-import { Smile, HeartHandshake, Info } from 'lucide-react';
+import { Smile, Info, Percent, Hash } from 'lucide-react';
 
 export default function SatisfactionTab() {
   const { filteredRecords } = useHR();
+  const [viewMode, setViewMode] = useState<'avg' | 'total'>('avg');
 
   const deptSat = groupByDepartment(filteredRecords);
   const roleSat = groupByJobRole(filteredRecords);
   const levelSat = groupByJobLevel(filteredRecords);
 
-  // 5 Dimensions Average Overview
   const dimensionsOverview = useMemo(() => {
     if (filteredRecords.length === 0) return [];
     const len = filteredRecords.length;
@@ -47,7 +42,6 @@ export default function SatisfactionTab() {
     ];
   }, [filteredRecords]);
 
-  // Satisfaction vs Attrition (Active vs Departed comparison across dimensions)
   const satVsAttritionData = useMemo(() => {
     const active = filteredRecords.filter((r) => !r.attrition);
     const departed = filteredRecords.filter((r) => r.attrition);
@@ -89,24 +83,50 @@ export default function SatisfactionTab() {
   return (
     <div className="space-y-6">
       
-      {/* Header Banner */}
-      <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header Banner with Consistent View Mode Toggle */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors duration-200">
         <div>
           <div className="flex items-center gap-2">
             <Smile className="w-5 h-5 text-amber-500" />
-            <h2 className="text-lg font-bold text-navy-900">Satisfaction & Employee Engagement</h2>
+            <h2 className="text-lg font-bold text-navy-900 dark:text-white">Satisfaction & Employee Engagement</h2>
           </div>
-          <p className="text-xs text-navy-500 mt-1">
+          <p className="text-xs text-navy-500 dark:text-slate-400 mt-1">
             Multi-dimensional evaluation of employee experience across 5 core satisfaction indicators (Scale 1-5).
           </p>
         </div>
+
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 self-start md:self-auto">
+          <button
+            onClick={() => setViewMode('avg')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              viewMode === 'avg'
+                ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            <Percent className="w-3.5 h-3.5" />
+            <span>Average Score (1-5)</span>
+          </button>
+          <button
+            onClick={() => setViewMode('total')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+              viewMode === 'total'
+                ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+            }`}
+          >
+            <Hash className="w-3.5 h-3.5" />
+            <span>Headcount</span>
+          </button>
+        </div>
       </div>
 
-      {/* Causal Claim Warning Disclaimer */}
-      <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 flex items-start gap-3 text-xs text-navy-800">
-        <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+      {/* Disclaimer */}
+      <div className="bg-amber-50/70 dark:bg-slate-800/40 border border-amber-200 dark:border-slate-700 rounded-xl p-4 flex items-start gap-3 text-xs text-navy-800 dark:text-slate-300">
+        <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
         <div>
-          <span className="font-bold text-navy-900">Observed Relationship Note:</span> Correlations between satisfaction scores and employee attrition represent empirical associations within the dataset.
+          <span className="font-bold text-navy-900 dark:text-white">Observed Relationship Note:</span> Correlations between satisfaction scores and employee attrition represent empirical associations within the dataset.
           These findings are presented as observed patterns and do not imply direct causality.
         </div>
       </div>
@@ -115,9 +135,9 @@ export default function SatisfactionTab() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* 5-Dimension Overview Bar */}
-        <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-navy-900 mb-1">Satisfaction Dimensions Overview</h3>
-          <p className="text-xs text-navy-500 mb-4">Average scores out of 5.0 rating scale</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs transition-colors duration-200">
+          <h3 className="text-sm font-bold text-navy-900 dark:text-white mb-1">Satisfaction Dimensions Overview</h3>
+          <p className="text-xs text-navy-500 dark:text-slate-400 mb-4">Average scores out of 5.0 rating scale</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dimensionsOverview} margin={{ top: 10, right: 20, left: 10, bottom: 20 }}>
@@ -135,9 +155,9 @@ export default function SatisfactionTab() {
         </div>
 
         {/* Satisfaction vs Attrition Comparison */}
-        <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-navy-900 mb-1">Satisfaction vs Attrition Status</h3>
-          <p className="text-xs text-navy-500 mb-4">Comparison of scores between Active and Departed employees</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs transition-colors duration-200">
+          <h3 className="text-sm font-bold text-navy-900 dark:text-white mb-1">Satisfaction vs Attrition Status</h3>
+          <p className="text-xs text-navy-500 dark:text-slate-400 mb-4">Comparison of scores between Active and Departed employees</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={satVsAttritionData} margin={{ top: 10, right: 20, left: 10, bottom: 20 }}>
@@ -157,29 +177,33 @@ export default function SatisfactionTab() {
         </div>
 
         {/* Satisfaction by Department */}
-        <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-navy-900 mb-1">Job Satisfaction by Department</h3>
-          <p className="text-xs text-navy-500 mb-4">Mean job satisfaction score across departments</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs transition-colors duration-200">
+          <h3 className="text-sm font-bold text-navy-900 dark:text-white mb-1">
+            {viewMode === 'avg' ? 'Job Satisfaction by Department' : 'Headcount by Department'}
+          </h3>
+          <p className="text-xs text-navy-500 dark:text-slate-400 mb-4">
+            {viewMode === 'avg' ? 'Mean job satisfaction score across departments' : 'Total employee headcount'}
+          </p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={deptSat} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="category" tick={{ fontSize: 11, fill: '#475569' }} />
-                <YAxis domain={[0, 5]} tick={{ fontSize: 11, fill: '#475569' }} />
+                <YAxis domain={viewMode === 'avg' ? [0, 5] : undefined} tick={{ fontSize: 11, fill: '#475569' }} />
                 <Tooltip
-                  formatter={(val: number) => [`${val} / 5.0`, 'Job Satisfaction']}
+                  formatter={(val: number) => [viewMode === 'avg' ? `${val} / 5.0` : `${val} staff`, viewMode === 'avg' ? 'Job Satisfaction' : 'Headcount']}
                   contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
                 />
-                <Bar dataKey="avgSatisfaction" fill="#d97706" radius={[4, 4, 0, 0]} />
+                <Bar dataKey={viewMode === 'avg' ? 'avgSatisfaction' : 'total'} fill="#d97706" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Work-Life Balance by Department */}
-        <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs">
-          <h3 className="text-sm font-bold text-navy-900 mb-1">Work-Life Balance by Department</h3>
-          <p className="text-xs text-navy-500 mb-4">Mean work-life balance score by department</p>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs transition-colors duration-200">
+          <h3 className="text-sm font-bold text-navy-900 dark:text-white mb-1">Work-Life Balance by Department</h3>
+          <p className="text-xs text-navy-500 dark:text-slate-400 mb-4">Mean work-life balance score by department</p>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={deptSat} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>

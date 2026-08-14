@@ -8,7 +8,7 @@ export interface SupabaseFetchResult {
   isRlsBlocked?: boolean;
 }
 
-const PAGE_SIZE = 1000; // Supabase PostgREST default page ceiling
+const PAGE_SIZE = 1000;
 
 export async function fetchSupabaseEmployees(): Promise<SupabaseFetchResult> {
   const supabase = initSupabaseClient();
@@ -23,13 +23,14 @@ export async function fetchSupabaseEmployees(): Promise<SupabaseFetchResult> {
   }
 
   try {
-    // ── Step 1: get the exact total row count ──────────────────────────────
     const { count: totalCount, error: countError } = await supabase
       .from('employees')
-      .select('*', { count: 'exact', head: true }); // HEAD request — no rows transferred
+      .select('*', { count: 'exact', head: true });
 
     if (countError) {
-      console.error('Supabase count error:', countError);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Supabase count error:', countError);
+      }
       return {
         data: null,
         error: `Database query failed: ${countError.message || 'Unknown error'}`,
@@ -40,11 +41,9 @@ export async function fetchSupabaseEmployees(): Promise<SupabaseFetchResult> {
     const total = totalCount ?? 0;
 
     if (total === 0) {
-      // Connected but 0 rows — likely RLS blocking anonymous reads
       return { data: [], error: null, count: 0, isRlsBlocked: true };
     }
 
-    // ── Step 2: paginate through ALL rows ─────────────────────────────────
     const allRows: EmployeeRawRecord[] = [];
     let from = 0;
 
@@ -55,7 +54,9 @@ export async function fetchSupabaseEmployees(): Promise<SupabaseFetchResult> {
         .range(from, from + PAGE_SIZE - 1);
 
       if (pageError) {
-        console.error('Supabase page error:', pageError);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Supabase page error:', pageError);
+        }
         return {
           data: null,
           error: `Paginated fetch failed at offset ${from}: ${pageError.message}`,
@@ -69,7 +70,9 @@ export async function fetchSupabaseEmployees(): Promise<SupabaseFetchResult> {
       from += PAGE_SIZE;
     }
 
-    console.log(`✅ Supabase: fetched ${allRows.length} / ${total} employee records`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Supabase: fetched ${allRows.length} / ${total} employee records`);
+    }
 
     return {
       data: allRows,

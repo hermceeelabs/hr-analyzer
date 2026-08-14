@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useHR } from '@/lib/store/useHRStore';
 import { CustomReport, EmployeeRecord } from '@/types/hr';
 import ReportPreview from './ReportPreview';
@@ -12,11 +12,10 @@ import {
   Edit3,
   Calendar,
   Layers,
-  TrendingUp,
-  TrendingDown,
-  Minus,
+  Sparkles,
 } from 'lucide-react';
 import { calculateOverallKPIs, applyFilters } from '@/lib/analytics/engine';
+import { evaluateRuleInsights, DEFAULT_PROMOTION_CONFIG, PromotionRuleConfig } from '@/lib/analytics/rules';
 
 export default function ReportBuilder() {
   const {
@@ -26,27 +25,36 @@ export default function ReportBuilder() {
     filterState,
     dataSourceMode,
     allRecords,
+    filteredRecords,
     kpis,
   } = useHR();
 
   const [activeReport, setActiveReport] = useState<CustomReport | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
 
-  // Period Comparison State
+  // Period / Cohort Comparison State
   const [enableComparison, setEnableComparison] = useState(false);
   const [periodAFilter, setPeriodAFilter] = useState<'All' | 'Sales' | 'Research & Development' | 'Human Resources'>('Sales');
   const [periodBFilter, setPeriodBFilter] = useState<'All' | 'Sales' | 'Research & Development' | 'Human Resources'>('Research & Development');
   const [periodALabel, setPeriodALabel] = useState('Sales Dept');
   const [periodBLabel, setPeriodBLabel] = useState('R&D Dept');
 
+  // Promotion Rule Config
+  const [promoConfig, setPromoConfig] = useState<PromotionRuleConfig>(DEFAULT_PROMOTION_CONFIG);
+
   // Form State
   const [title, setTitle] = useState('Executive HR Analytics Report');
   const [executiveSummary, setExecutiveSummary] = useState(
     `This report summarizes key workforce indicators, attrition risks, and compensation insights based on the active dataset.`
   );
-  const [commentary, setCommentary] = useState(
-    `Key Observations:\n1. Attrition rate is currently evaluated across active headcount.\n2. Overtime working hours continue to show a strong correlation with departure likelihood.\n3. Compensation review is recommended for job roles with elevated tenure and delayed promotion intervals.`
-  );
+
+  // Dynamically compute rule-based empirical insights for current dataset
+  const empiricalInsights = evaluateRuleInsights(filteredRecords, kpis);
+  const defaultCommentary = empiricalInsights.length > 0
+    ? `Empirical Observations (Computed Engine):\n` + empiricalInsights.map((ins, i) => `${i + 1}. [${ins.confidence} Confidence] ${ins.statement}`).join('\n')
+    : `Key Observations:\n1. Attrition rate is currently at ${kpis.attritionRate}% across evaluated headcount.\n2. Sample size requires additional data points for high-confidence correlation.`;
+
+  const [commentary, setCommentary] = useState(defaultCommentary);
 
   const [selectedKPIs, setSelectedKPIs] = useState<string[]>([
     'Total Headcount',
@@ -107,6 +115,9 @@ export default function ReportBuilder() {
       periodBLabel?: string;
       kpisA?: typeof kpis;
       kpisB?: typeof kpis;
+      recordsA?: EmployeeRecord[];
+      recordsB?: EmployeeRecord[];
+      empiricalInsights?: typeof empiricalInsights;
     } = {
       id: `report-${Date.now()}`,
       title,
@@ -126,6 +137,9 @@ export default function ReportBuilder() {
       periodBLabel: enableComparison ? periodBLabel : undefined,
       kpisA: enableComparison ? kpisA : undefined,
       kpisB: enableComparison ? kpisB : undefined,
+      recordsA: enableComparison ? recordsA : undefined,
+      recordsB: enableComparison ? recordsB : undefined,
+      empiricalInsights,
     };
 
     saveReport(newReport as any);
@@ -148,7 +162,7 @@ export default function ReportBuilder() {
   return (
     <div className="space-y-6">
       
-      {/* Header Banner - Marked print:hidden so it never shows in PDF exports */}
+      {/* Header Banner - Marked print:hidden */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden transition-colors duration-200">
         <div>
           <div className="flex items-center gap-2">
@@ -156,7 +170,7 @@ export default function ReportBuilder() {
             <h2 className="text-lg font-bold text-navy-900 dark:text-white">Session Report Builder</h2>
           </div>
           <p className="text-xs text-navy-500 dark:text-slate-400 mt-1">
-            Build print-ready management reports with period comparison, customized metrics, visual charts, and executive commentary.
+            Build print-ready management reports with empirical rule-based insights, period comparison, customized metrics, and visual charts.
           </p>
         </div>
 
@@ -276,7 +290,6 @@ export default function ReportBuilder() {
 
               {enableComparison && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-brand-200/60 dark:border-slate-700">
-                  {/* Cohort A */}
                   <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
                     <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Primary Group (Cohort A)</label>
                     <input
@@ -298,7 +311,6 @@ export default function ReportBuilder() {
                     </select>
                   </div>
 
-                  {/* Cohort B */}
                   <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
                     <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Comparison Group (Cohort B)</label>
                     <input
@@ -321,6 +333,42 @@ export default function ReportBuilder() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Promotion Threshold Rule Settings */}
+            <div className="p-4 rounded-xl border border-navy-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/20 space-y-3">
+              <div className="flex items-center gap-2 font-bold text-navy-900 dark:text-white text-xs">
+                <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                <span>Configurable Rule Engine Thresholds</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                <div>
+                  <label className="font-semibold text-navy-700 dark:text-slate-300 block mb-1">
+                    Min Tenure Years (Promotion Rule): {promoConfig.minTenureYears} yrs
+                  </label>
+                  <input
+                    type="range"
+                    min={2}
+                    max={10}
+                    value={promoConfig.minTenureYears}
+                    onChange={(e) => setPromoConfig((p) => ({ ...p, minTenureYears: Number(e.target.value) }))}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-navy-700 dark:text-slate-300 block mb-1">
+                    Min Delay Since Promotion: {promoConfig.minYearsSincePromotion} yrs
+                  </label>
+                  <input
+                    type="range"
+                    min={1}
+                    max={8}
+                    value={promoConfig.minYearsSincePromotion}
+                    onChange={(e) => setPromoConfig((p) => ({ ...p, minYearsSincePromotion: Number(e.target.value) }))}
+                    className="w-full"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Executive Summary */}
@@ -390,7 +438,7 @@ export default function ReportBuilder() {
 
             {/* Commentary */}
             <div className="space-y-1.5">
-              <label className="font-bold text-navy-900 dark:text-slate-200 block text-xs">Observations & Managerial Commentary</label>
+              <label className="font-bold text-navy-900 dark:text-slate-200 block text-xs">Empirical Observations & Managerial Commentary</label>
               <textarea
                 rows={4}
                 value={commentary}

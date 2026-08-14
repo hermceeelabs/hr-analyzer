@@ -1,16 +1,34 @@
 import { EmployeeRawRecord, EmployeeRecord } from '@/types/hr';
+import { isPromotionCandidate } from './rules';
 
-export function normalizeRawRecord(raw: EmployeeRawRecord, index: number): EmployeeRecord {
-  // Helper to safely get numeric value
-  const getNum = (val: unknown, fallback = 0): number => {
-    if (val === null || val === undefined || val === '') return fallback;
+export interface RecordNormalizationMeta {
+  isDefaulted: boolean;
+  defaultedFields: string[];
+}
+
+export function normalizeRawRecord(raw: EmployeeRawRecord, index: number): EmployeeRecord & { _meta?: RecordNormalizationMeta } {
+  const defaultedFields: string[] = [];
+
+  // Helper to safely get numeric value and track if defaulted
+  const getNum = (val: unknown, fieldName: string, fallback = 0): number => {
+    if (val === null || val === undefined || val === '') {
+      defaultedFields.push(fieldName);
+      return fallback;
+    }
     const num = Number(val);
-    return isNaN(num) ? fallback : num;
+    if (isNaN(num)) {
+      defaultedFields.push(fieldName);
+      return fallback;
+    }
+    return num;
   };
 
   // Helper to safely get string value
-  const getStr = (val: unknown, fallback = 'N/A'): string => {
-    if (val === null || val === undefined || val === '') return fallback;
+  const getStr = (val: unknown, fieldName: string, fallback = 'N/A'): string => {
+    if (val === null || val === undefined || val === '') {
+      defaultedFields.push(fieldName);
+      return fallback;
+    }
     return String(val).trim();
   };
 
@@ -18,14 +36,14 @@ export function normalizeRawRecord(raw: EmployeeRawRecord, index: number): Emplo
   const rawEmpId = raw.EmpID ?? raw.empId ?? raw.emp_id ?? raw.EmployeeNumber ?? raw.id;
   const empId = rawEmpId ? String(rawEmpId).trim() : `EMP-${(index + 1).toString().padStart(4, '0')}`;
 
-  const age = getNum(raw.Age, 30);
-  const attritionRaw = getStr(raw.Attrition ?? raw.attrition, 'No');
+  const age = getNum(raw.Age, 'Age', 30);
+  const attritionRaw = getStr(raw.Attrition ?? raw.attrition, 'Attrition', 'No');
   const attrition = attritionRaw.toLowerCase() === 'yes' || attritionRaw.toLowerCase() === 'true';
 
-  const overTimeRaw = getStr(raw.OverTime ?? raw.overTime ?? raw.overtime, 'No');
+  const overTimeRaw = getStr(raw.OverTime ?? raw.overTime ?? raw.overtime, 'OverTime', 'No');
   const overTime = overTimeRaw.toLowerCase() === 'yes' || overTimeRaw.toLowerCase() === 'true';
 
-  const distance = getNum(raw.DistanceFromHome ?? raw.distanceFromHome, 0);
+  const distance = getNum(raw.DistanceFromHome ?? raw.distanceFromHome, 'DistanceFromHome', 0);
 
   // Determine Distance Band
   let distanceBand = '0-5 km (Near)';
@@ -37,14 +55,14 @@ export function normalizeRawRecord(raw: EmployeeRawRecord, index: number): Emplo
     distanceBand = '6-10 km (Moderate)';
   }
 
-  const yearsAtCompany = getNum(raw.YearsAtCompany ?? raw.yearsAtCompany, 0);
-  const yearsSincePromotion = getNum(raw.YearsSinceLastPromotion ?? raw.yearsSinceLastPromotion, 0);
+  const yearsAtCompany = getNum(raw.YearsAtCompany ?? raw.yearsAtCompany, 'YearsAtCompany', 0);
+  const yearsSincePromotion = getNum(raw.YearsSinceLastPromotion ?? raw.yearsSinceLastPromotion, 'YearsSinceLastPromotion', 0);
 
-  // Promotion candidate threshold: at least 5 years at company and >= 4 years since promotion
-  const promotionCandidateFlag = yearsAtCompany >= 5 && yearsSincePromotion >= 4;
+  // Use centralized rules engine for promotion candidacy
+  const promotionCandidateFlag = isPromotionCandidate({ yearsAtCompany, yearsSinceLastPromotion });
 
   // Age group fallback if not provided
-  let ageGroup = getStr(raw.AgeGroup ?? raw.ageGroup, '');
+  let ageGroup = getStr(raw.AgeGroup ?? raw.ageGroup, 'AgeGroup', '');
   if (!ageGroup || ageGroup === 'N/A') {
     if (age < 30) ageGroup = '18-29';
     else if (age < 40) ageGroup = '30-39';
@@ -53,8 +71,8 @@ export function normalizeRawRecord(raw: EmployeeRawRecord, index: number): Emplo
   }
 
   // Salary slab fallback if not provided
-  const monthlyIncome = getNum(raw.MonthlyIncome ?? raw.monthlyIncome, 0);
-  let salarySlab = getStr(raw.SalarySlab ?? raw.salarySlab, '');
+  const monthlyIncome = getNum(raw.MonthlyIncome ?? raw.monthlyIncome, 'MonthlyIncome', 0);
+  let salarySlab = getStr(raw.SalarySlab ?? raw.salarySlab, 'SalarySlab', '');
   if (!salarySlab || salarySlab === 'N/A') {
     if (monthlyIncome < 5000) salarySlab = '< $5k';
     else if (monthlyIncome < 10000) salarySlab = '$5k - $10k';
@@ -69,42 +87,46 @@ export function normalizeRawRecord(raw: EmployeeRawRecord, index: number): Emplo
     ageGroup,
     attrition,
     attritionRaw,
-    businessTravel: getStr(raw.BusinessTravel ?? raw.businessTravel, 'Travel_Rarely'),
-    dailyRate: getNum(raw.DailyRate ?? raw.dailyRate, 0),
-    department: getStr(raw.Department ?? raw.department, 'Research & Development'),
+    businessTravel: getStr(raw.BusinessTravel ?? raw.businessTravel, 'BusinessTravel', 'Travel_Rarely'),
+    dailyRate: getNum(raw.DailyRate ?? raw.dailyRate, 'DailyRate', 0),
+    department: getStr(raw.Department ?? raw.department, 'Department', 'Research & Development'),
     distanceFromHome: distance,
-    education: getNum(raw.Education ?? raw.education, 3),
-    educationField: getStr(raw.EducationField ?? raw.educationField, 'Other'),
-    employeeNumber: getNum(raw.EmployeeNumber ?? raw.employeeNumber, index + 1),
-    environmentSatisfaction: getNum(raw.EnvironmentSatisfaction ?? raw.environmentSatisfaction, 3),
-    gender: getStr(raw.Gender ?? raw.gender, 'Unspecified'),
-    hourlyRate: getNum(raw.HourlyRate ?? raw.hourlyRate, 0),
-    jobInvolvement: getNum(raw.JobInvolvement ?? raw.jobInvolvement, 3),
-    jobLevel: getNum(raw.JobLevel ?? raw.jobLevel, 1),
-    jobRole: getStr(raw.JobRole ?? raw.jobRole, 'Staff'),
-    jobSatisfaction: getNum(raw.JobSatisfaction ?? raw.jobSatisfaction, 3),
-    maritalStatus: getStr(raw.MaritalStatus ?? raw.maritalStatus, 'Single'),
+    education: getNum(raw.Education ?? raw.education, 'Education', 3),
+    educationField: getStr(raw.EducationField ?? raw.educationField, 'EducationField', 'Other'),
+    employeeNumber: getNum(raw.EmployeeNumber ?? raw.employeeNumber, 'EmployeeNumber', index + 1),
+    environmentSatisfaction: getNum(raw.EnvironmentSatisfaction ?? raw.environmentSatisfaction, 'EnvironmentSatisfaction', 3),
+    gender: getStr(raw.Gender ?? raw.gender, 'Gender', 'Unspecified'),
+    hourlyRate: getNum(raw.HourlyRate ?? raw.hourlyRate, 'HourlyRate', 0),
+    jobInvolvement: getNum(raw.JobInvolvement ?? raw.jobInvolvement, 'JobInvolvement', 3),
+    jobLevel: getNum(raw.JobLevel ?? raw.jobLevel, 'JobLevel', 1),
+    jobRole: getStr(raw.JobRole ?? raw.jobRole, 'JobRole', 'Staff'),
+    jobSatisfaction: getNum(raw.JobSatisfaction ?? raw.jobSatisfaction, 'JobSatisfaction', 3),
+    maritalStatus: getStr(raw.MaritalStatus ?? raw.maritalStatus, 'MaritalStatus', 'Single'),
     monthlyIncome,
     salarySlab,
-    monthlyRate: getNum(raw.MonthlyRate ?? raw.monthlyRate, 0),
-    numCompaniesWorked: getNum(raw.NumCompaniesWorked ?? raw.numCompaniesWorked, 0),
-    over18: getStr(raw.Over18 ?? raw.over18, 'Y'),
+    monthlyRate: getNum(raw.MonthlyRate ?? raw.monthlyRate, 'MonthlyRate', 0),
+    numCompaniesWorked: getNum(raw.NumCompaniesWorked ?? raw.numCompaniesWorked, 'NumCompaniesWorked', 0),
+    over18: getStr(raw.Over18 ?? raw.over18, 'Over18', 'Y'),
     overTime,
     overTimeRaw,
-    percentSalaryHike: getNum(raw.PercentSalaryHike ?? raw.percentSalaryHike, 0),
-    performanceRating: getNum(raw.PerformanceRating ?? raw.performanceRating, 3),
-    relationshipSatisfaction: getNum(raw.RelationshipSatisfaction ?? raw.relationshipSatisfaction, 3),
-    standardHours: getNum(raw.StandardHours ?? raw.standardHours, 80),
-    stockOptionLevel: getNum(raw.StockOptionLevel ?? raw.stockOptionLevel, 0),
-    totalWorkingYears: getNum(raw.TotalWorkingYears ?? raw.totalWorkingYears, 0),
-    trainingTimesLastYear: getNum(raw.TrainingTimesLastYear ?? raw.trainingTimesLastYear, 0),
-    workLifeBalance: getNum(raw.WorkLifeBalance ?? raw.workLifeBalance, 3),
+    percentSalaryHike: getNum(raw.PercentSalaryHike ?? raw.percentSalaryHike, 'PercentSalaryHike', 0),
+    performanceRating: getNum(raw.PerformanceRating ?? raw.performanceRating, 'PerformanceRating', 3),
+    relationshipSatisfaction: getNum(raw.RelationshipSatisfaction ?? raw.relationshipSatisfaction, 'RelationshipSatisfaction', 3),
+    standardHours: getNum(raw.StandardHours ?? raw.standardHours, 'StandardHours', 80),
+    stockOptionLevel: getNum(raw.StockOptionLevel ?? raw.stockOptionLevel, 'StockOptionLevel', 0),
+    totalWorkingYears: getNum(raw.TotalWorkingYears ?? raw.totalWorkingYears, 'TotalWorkingYears', 0),
+    trainingTimesLastYear: getNum(raw.TrainingTimesLastYear ?? raw.trainingTimesLastYear, 'TrainingTimesLastYear', 0),
+    workLifeBalance: getNum(raw.WorkLifeBalance ?? raw.workLifeBalance, 'WorkLifeBalance', 3),
     yearsAtCompany,
-    yearsInCurrentRole: getNum(raw.YearsInCurrentRole ?? raw.yearsInCurrentRole, 0),
+    yearsInCurrentRole: getNum(raw.YearsInCurrentRole ?? raw.yearsInCurrentRole, 'YearsInCurrentRole', 0),
     yearsSinceLastPromotion: yearsSincePromotion,
-    yearsWithCurrManager: getNum(raw.YearsWithCurrManager ?? raw.yearsWithCurrManager, 0),
+    yearsWithCurrManager: getNum(raw.YearsWithCurrManager ?? raw.yearsWithCurrManager, 'YearsWithCurrManager', 0),
     promotionCandidateFlag,
     distanceBand,
+    _meta: {
+      isDefaulted: defaultedFields.length > 0,
+      defaultedFields,
+    },
   };
 }
 
