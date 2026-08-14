@@ -114,16 +114,7 @@ export default function ReportBuilder() {
   const kpisB = useMemo(() => calculateOverallKPIs(recordsB), [recordsB]);
 
   const handleCreateNewReport = () => {
-    const newReport: CustomReport & {
-      enableComparison?: boolean;
-      periodALabel?: string;
-      periodBLabel?: string;
-      kpisA?: typeof kpis;
-      kpisB?: typeof kpis;
-      recordsA?: EmployeeRecord[];
-      recordsB?: EmployeeRecord[];
-      empiricalInsights?: typeof empiricalInsights;
-    } = {
+    const newReport: CustomReport & { empiricalInsights?: typeof empiricalInsights } = {
       id: `report-${Date.now()}`,
       title,
       createdAt: new Date().toLocaleDateString('en-US', {

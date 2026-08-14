@@ -169,4 +169,12 @@ export interface CustomReport {
   executiveSummary: string;
   commentary: string;
   dataSource: DataSourceMode;
+  enableComparison?: boolean;
+  comparisonMode?: 'cohort' | 'date';
+  periodALabel?: string;
+  periodBLabel?: string;
+  kpisA?: OverallKPIs;
+  kpisB?: OverallKPIs;
+  recordsA?: EmployeeRecord[];
+  recordsB?: EmployeeRecord[];
 }
