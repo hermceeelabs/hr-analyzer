@@ -80,6 +80,38 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
     }
   };
 
+  // Compute Delta with proper contextual formatting (Rate % vs Currency $ vs Count)
+  const getKPIDeltaMeta = (title: string, valA: number, valB: number) => {
+    const diff = valB - valA;
+    if (Math.abs(diff) < 0.01) {
+      return { text: '0.0', type: 'neutral', icon: Minus };
+    }
+
+    const isRate = title.includes('Rate') || title.includes('Satisfaction');
+    const isCurrency = title.includes('Income') || title.includes('Salary');
+    const formattedDiff = isCurrency
+      ? `$${Math.abs(diff).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+      : isRate
+      ? `${Math.abs(diff).toFixed(1)}%`
+      : `${Math.abs(diff).toFixed(1)}`;
+
+    const text = diff > 0 ? `+${formattedDiff}` : `-${formattedDiff}`;
+
+    // Contextual badge coloring: Attrition Rate increase is negative/danger (red)
+    let badgeType: 'success' | 'danger' | 'neutral' = 'neutral';
+    if (title === 'Attrition Rate' || title === 'Overtime Rate') {
+      badgeType = diff > 0 ? 'danger' : 'success';
+    } else {
+      badgeType = diff > 0 ? 'success' : 'danger';
+    }
+
+    return {
+      text,
+      badgeType,
+      icon: diff > 0 ? TrendingUp : TrendingDown,
+    };
+  };
+
   return (
     <div className="space-y-6">
       
@@ -102,11 +134,11 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
         </button>
       </div>
 
-      {/* Print Document Container (Only this section prints to PDF) */}
+      {/* Print Document Container */}
       <div className="bg-white rounded-xl border border-navy-200 p-8 sm:p-12 shadow-md max-w-4xl mx-auto space-y-8 text-navy-900 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full">
         
         {/* Document Header */}
-        <div className="border-b border-navy-900/20 pb-6 flex items-start justify-between">
+        <div className="border-b border-navy-900/20 pb-6 flex items-start justify-between break-inside-avoid">
           <div>
             <div className="text-xs font-bold text-brand-600 uppercase tracking-widest mb-1">
               Management Intelligence Report
@@ -121,7 +153,7 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
         </div>
 
         {/* Reporting Context / Selected Filters */}
-        <div className="bg-navy-50/70 rounded-lg p-4 border border-navy-100 text-xs">
+        <div className="bg-navy-50/70 rounded-lg p-4 border border-navy-100 text-xs break-inside-avoid">
           <div className="font-bold text-navy-900 uppercase tracking-wider mb-2 text-[11px]">
             Reporting Context & Filters Applied:
           </div>
@@ -148,7 +180,7 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
         </div>
 
         {/* Executive Summary */}
-        <div className="space-y-2">
+        <div className="space-y-2 break-inside-avoid">
           <h2 className="text-sm font-bold uppercase tracking-wider text-navy-900 border-b pb-1">
             Executive Summary
           </h2>
@@ -157,7 +189,7 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
 
         {/* Key Metrics / Period Comparison View */}
         {report.selectedKPIs.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-3 break-inside-avoid">
             <div className="flex items-center justify-between border-b pb-1">
               <h2 className="text-sm font-bold uppercase tracking-wider text-navy-900">
                 {report.enableComparison ? 'Period / Cohort Comparative Metrics' : 'Key Metrics'}
@@ -175,12 +207,11 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
                   {report.selectedKPIs.map((kpiTitle) => {
                     const valA = getKPIRawVal(kpiTitle, report.kpisA);
                     const valB = getKPIRawVal(kpiTitle, report.kpisB);
-                    const diff = typeof valA === 'number' && typeof valB === 'number' ? valB - valA : 0;
-                    const isIncrease = diff > 0;
-                    const isDecrease = diff < 0;
+                    const meta = getKPIDeltaMeta(kpiTitle, valA, valB);
+                    const IconComponent = meta.icon;
 
                     return (
-                      <div key={kpiTitle} className="p-3 bg-navy-50/50 rounded-lg border border-navy-100 flex items-center justify-between">
+                      <div key={kpiTitle} className="p-3 bg-navy-50/50 rounded-lg border border-navy-100 flex items-center justify-between break-inside-avoid">
                         <div>
                           <div className="text-[10px] font-bold text-navy-500 uppercase">{kpiTitle}</div>
                           <div className="flex items-center gap-3 mt-1.5">
@@ -196,13 +227,16 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
                           </div>
                         </div>
 
-                        <div className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 ${
-                          isIncrease ? 'bg-emerald-100 text-emerald-800' : isDecrease ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700'
+                        {/* Corrected Delta Badge */}
+                        <div className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 shrink-0 ${
+                          meta.badgeType === 'success'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : meta.badgeType === 'danger'
+                            ? 'bg-rose-100 text-rose-800'
+                            : 'bg-slate-100 text-slate-700'
                         }`}>
-                          {isIncrease && <TrendingUp className="w-3 h-3 text-emerald-600" />}
-                          {isDecrease && <TrendingDown className="w-3 h-3 text-rose-600" />}
-                          {!isIncrease && !isDecrease && <Minus className="w-3 h-3 text-slate-500" />}
-                          <span>{diff > 0 ? `+${diff.toFixed(1)}` : diff.toFixed(1)}</span>
+                          <IconComponent className="w-3 h-3" />
+                          <span>{meta.text}</span>
                         </div>
                       </div>
                     );
@@ -212,7 +246,7 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {report.selectedKPIs.map((kpiTitle) => (
-                  <div key={kpiTitle} className="p-3 bg-navy-50/50 rounded-lg border border-navy-100 text-center">
+                  <div key={kpiTitle} className="p-3 bg-navy-50/50 rounded-lg border border-navy-100 text-center break-inside-avoid">
                     <div className="text-[10px] font-bold text-navy-500 uppercase">{kpiTitle}</div>
                     <div className="text-xl font-extrabold text-navy-950 mt-1">
                       {getKPIValue(kpiTitle)}
@@ -227,15 +261,15 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
         {/* Selected Visualizations */}
         {report.selectedCharts.length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-navy-900 border-b pb-1">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-navy-900 border-b pb-1 break-inside-avoid">
               Selected Visualizations
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {report.selectedCharts.includes('Department Breakdown') && (
-                <div className="border border-navy-100 rounded-lg p-4">
+                <div className="border border-navy-100 rounded-lg p-4 break-inside-avoid">
                   <div className="text-xs font-bold text-navy-800 mb-2">Headcount by Department</div>
-                  <div className="h-44">
+                  <div className="h-48">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={deptData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -249,9 +283,9 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
               )}
 
               {report.selectedCharts.includes('Attrition by Department') && (
-                <div className="border border-navy-100 rounded-lg p-4">
+                <div className="border border-navy-100 rounded-lg p-4 break-inside-avoid">
                   <div className="text-xs font-bold text-navy-800 mb-2">Attrition Rate by Department (%)</div>
-                  <div className="h-44">
+                  <div className="h-48">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={deptData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -265,9 +299,9 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
               )}
 
               {report.selectedCharts.includes('Attrition by Overtime') && (
-                <div className="border border-navy-100 rounded-lg p-4">
+                <div className="border border-navy-100 rounded-lg p-4 break-inside-avoid">
                   <div className="text-xs font-bold text-navy-800 mb-2">Attrition Rate by Overtime (%)</div>
-                  <div className="h-44">
+                  <div className="h-48">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={otData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -281,9 +315,9 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
               )}
 
               {report.selectedCharts.includes('Salary by Department') && (
-                <div className="border border-navy-100 rounded-lg p-4">
+                <div className="border border-navy-100 rounded-lg p-4 break-inside-avoid">
                   <div className="text-xs font-bold text-navy-800 mb-2">Average Salary by Department ($)</div>
-                  <div className="h-44">
+                  <div className="h-48">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={deptData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -300,7 +334,7 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
         )}
 
         {/* Observations / Commentary */}
-        <div className="space-y-2">
+        <div className="space-y-2 break-inside-avoid">
           <h2 className="text-sm font-bold uppercase tracking-wider text-navy-900 border-b pb-1">
             Observations & Commentary
           </h2>
@@ -310,7 +344,7 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
         </div>
 
         {/* Data Source Footer */}
-        <div className="pt-6 border-t border-navy-100 flex items-center justify-between text-[11px] text-navy-500 font-medium">
+        <div className="pt-6 border-t border-navy-100 flex items-center justify-between text-[11px] text-navy-500 font-medium break-inside-avoid">
           <div className="flex items-center gap-1.5">
             {report.dataSource === 'demo' ? (
               <>
