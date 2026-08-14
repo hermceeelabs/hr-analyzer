@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useHR } from '@/lib/store/useHRStore';
 import { CustomReport, EmployeeRecord } from '@/types/hr';
 import ReportPreview from './ReportPreview';
