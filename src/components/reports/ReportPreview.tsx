@@ -89,10 +89,13 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
 
     const isRate = title.includes('Rate') || title.includes('Satisfaction');
     const isCurrency = title.includes('Income') || title.includes('Salary');
+    const isInteger = title.includes('Headcount') || title.includes('Employees') || title.includes('Count');
     const formattedDiff = isCurrency
       ? `$${Math.abs(diff).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
       : isRate
       ? `${Math.abs(diff).toFixed(1)}%`
+      : isInteger
+      ? `${Math.abs(diff).toLocaleString()}`
       : `${Math.abs(diff).toFixed(1)}`;
 
     const text = diff > 0 ? `+${formattedDiff}` : `-${formattedDiff}`;
