@@ -64,7 +64,7 @@ export default function HRAnalyticsApp() {
 
   return (
     /* Full-viewport shell — sidebar fixed on left, right column scrolls */
-    <div className="flex h-screen overflow-hidden bg-slate-50 font-sans">
+    <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-[#0c111d] font-sans transition-colors duration-200">
 
       {/* ── Fixed sidebar — full viewport height, never scrolls ── */}
       <AppSidebar />
@@ -76,7 +76,7 @@ export default function HRAnalyticsApp() {
         <AppHeader />
 
         {/* Scrollable content area */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-[#0c111d] transition-colors duration-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
 
             {/* Database Connection Error */}

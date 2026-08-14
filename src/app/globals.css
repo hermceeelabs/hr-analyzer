@@ -2,36 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── CSS Custom Properties ─────────────────────────────────────── */
+:root {
+  --accent: #0062d6;          /* Default brand blue — overridden by ThemeProvider */
+  --accent-light: #e0edff;
+  --accent-dark: #004eb3;
+}
+
+/* ── Light mode base ────────────────────────────────────────────── */
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    background-color: #f8fafc;
+    background-color: #f1f5f9;
     color: #0f172a;
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  /* Dark mode overrides */
+  .dark body {
+    background-color: #0c111d;
+    color: #e2e8f0;
   }
 }
 
+/* ── Accent colour utilities (driven by CSS var) ────────────────── */
+@layer utilities {
+  .bg-accent          { background-color: var(--accent); }
+  .text-accent        { color: var(--accent); }
+  .border-accent      { border-color: var(--accent); }
+  .ring-accent        { --tw-ring-color: var(--accent); }
+  .bg-accent-light    { background-color: var(--accent-light); }
+}
+
+/* ── Dark-mode card / surface colours ──────────────────────────── */
+.dark .card-surface {
+  background-color: #131929;
+  border-color: #1e2d45;
+  color: #e2e8f0;
+}
+
+/* ── Scrollbar (thin, theme-aware) ─────────────────────────────── */
+::-webkit-scrollbar              { width: 5px; height: 5px; }
+::-webkit-scrollbar-track        { background: transparent; }
+::-webkit-scrollbar-thumb        { background: #cbd5e1; border-radius: 99px; }
+.dark ::-webkit-scrollbar-thumb  { background: #334155; }
+
+/* ── Print ──────────────────────────────────────────────────────── */
 @media print {
   body {
     background-color: #ffffff !important;
     color: #000000 !important;
   }
-
-  header,
-  aside,
-  .print\:hidden {
-    display: none !important;
-  }
-
-  .print\:border-none {
-    border: none !important;
-  }
-
-  .print\:shadow-none {
-    box-shadow: none !important;
-  }
-
-  .print\:p-0 {
-    padding: 0 !important;
-  }
+  header, aside, .print\:hidden { display: none !important; }
+  .print\:border-none            { border: none !important; }
+  .print\:shadow-none            { box-shadow: none !important; }
+  .print\:p-0                    { padding: 0 !important; }
 }

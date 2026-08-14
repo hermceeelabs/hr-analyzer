@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { HRProvider } from '@/lib/store/useHRStore';
+import { ThemeProvider } from '@/lib/theme/ThemeProvider';
 
 export const metadata: Metadata = {
   title: 'HR Analytics — Enterprise Workforce Intelligence',
@@ -14,8 +15,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full overflow-hidden">
-      <body className="h-full overflow-hidden bg-slate-50 antialiased text-slate-900">
-        <HRProvider>{children}</HRProvider>
+      <body className="h-full overflow-hidden antialiased">
+        <ThemeProvider>
+          <HRProvider>{children}</HRProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
