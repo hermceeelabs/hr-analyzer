@@ -7,10 +7,7 @@ import {
   groupByDepartment,
   groupByJobRole,
   groupByJobLevel,
-  groupByAgeGroup,
-  groupByGender,
   groupByOvertime,
-  groupByPerformanceRating,
 } from '@/lib/analytics/engine';
 import {
   ResponsiveContainer,
@@ -18,60 +15,79 @@ import {
   Bar,
   XAxis,
   YAxis,
-  Tooltip,
   CartesianGrid,
+  Tooltip,
 } from 'recharts';
-import { Printer, Edit3, Database, FileSpreadsheet } from 'lucide-react';
+import { Printer, Edit3, Database, FileSpreadsheet, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+
+interface CustomReportWithComparison extends CustomReport {
+  enableComparison?: boolean;
+  periodALabel?: string;
+  periodBLabel?: string;
+  kpisA?: any;
+  kpisB?: any;
+}
 
 interface ReportPreviewProps {
-  report: CustomReport;
+  report: CustomReportWithComparison;
   onEdit: () => void;
 }
 
 export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
-  const { filteredRecords, kpis, dataSourceMode } = useHR();
+  const { filteredRecords, kpis } = useHR();
 
   const handlePrint = () => {
     window.print();
   };
 
   const deptData = groupByDepartment(filteredRecords);
-  const roleData = groupByJobRole(filteredRecords);
-  const levelData = groupByJobLevel(filteredRecords);
   const otData = groupByOvertime(filteredRecords);
-  const perfData = groupByPerformanceRating(filteredRecords);
 
-  const getKPIValue = (title: string) => {
+  const getKPIValue = (title: string, targetKpis = kpis) => {
     switch (title) {
       case 'Total Headcount':
-        return kpis.totalEmployees.toLocaleString();
+        return targetKpis.totalEmployees.toLocaleString();
       case 'Active Employees':
-        return kpis.activeEmployees.toLocaleString();
+        return targetKpis.activeEmployees.toLocaleString();
       case 'Attrition Rate':
-        return `${kpis.attritionRate}%`;
+        return `${targetKpis.attritionRate}%`;
       case 'Average Monthly Income':
-        return `$${kpis.averageSalary.toLocaleString()}`;
+        return `$${targetKpis.averageSalary.toLocaleString()}`;
       case 'Average Workforce Age':
-        return `${kpis.averageAge} yrs`;
+        return `${targetKpis.averageAge} yrs`;
       case 'Average Tenure':
-        return `${kpis.averageTenure} yrs`;
+        return `${targetKpis.averageTenure} yrs`;
       case 'Overtime Rate':
-        return `${kpis.overtimeRate}%`;
+        return `${targetKpis.overtimeRate}%`;
       case 'Avg Job Satisfaction':
-        return `${kpis.averageJobSatisfaction} / 5`;
+        return `${targetKpis.averageJobSatisfaction} / 5`;
       default:
         return 'N/A';
+    }
+  };
+
+  const getKPIRawVal = (title: string, targetKpis = kpis) => {
+    switch (title) {
+      case 'Total Headcount': return targetKpis.totalEmployees;
+      case 'Active Employees': return targetKpis.activeEmployees;
+      case 'Attrition Rate': return targetKpis.attritionRate;
+      case 'Average Monthly Income': return targetKpis.averageSalary;
+      case 'Average Workforce Age': return targetKpis.averageAge;
+      case 'Average Tenure': return targetKpis.averageTenure;
+      case 'Overtime Rate': return targetKpis.overtimeRate;
+      case 'Avg Job Satisfaction': return targetKpis.averageJobSatisfaction;
+      default: return 0;
     }
   };
 
   return (
     <div className="space-y-6">
       
-      {/* Top Action Bar */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-navy-100 shadow-xs print:hidden">
+      {/* Top Action Bar (Marked print:hidden so it NEVER appears in PDF exports) */}
+      <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-xl border border-navy-100 dark:border-slate-800 shadow-xs print:hidden transition-colors duration-200">
         <button
           onClick={onEdit}
-          className="px-3.5 py-1.5 rounded-lg border border-navy-200 text-navy-700 font-semibold text-xs hover:bg-navy-50 flex items-center gap-1.5"
+          className="px-3.5 py-1.5 rounded-lg border border-navy-200 dark:border-slate-700 text-navy-700 dark:text-slate-300 font-semibold text-xs hover:bg-navy-50 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all"
         >
           <Edit3 className="w-3.5 h-3.5" />
           <span>Edit Report</span>
@@ -79,15 +95,15 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
 
         <button
           onClick={handlePrint}
-          className="px-4 py-1.5 rounded-lg bg-navy-900 hover:bg-navy-800 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm"
+          className="px-4 py-1.5 rounded-lg bg-navy-900 hover:bg-navy-800 dark:bg-brand-600 dark:hover:bg-brand-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all"
         >
           <Printer className="w-3.5 h-3.5" />
           <span>Print / Export PDF</span>
         </button>
       </div>
 
-      {/* Print Document Container */}
-      <div className="bg-white rounded-xl border border-navy-200 p-8 sm:p-12 shadow-md max-w-4xl mx-auto space-y-8 text-navy-900 print:shadow-none print:border-none print:p-0">
+      {/* Print Document Container (Only this section prints to PDF) */}
+      <div className="bg-white rounded-xl border border-navy-200 p-8 sm:p-12 shadow-md max-w-4xl mx-auto space-y-8 text-navy-900 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full">
         
         {/* Document Header */}
         <div className="border-b border-navy-900/20 pb-6 flex items-start justify-between">
@@ -139,22 +155,72 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
           <p className="text-xs text-navy-700 leading-relaxed">{report.executiveSummary}</p>
         </div>
 
-        {/* Key Metrics */}
+        {/* Key Metrics / Period Comparison View */}
         {report.selectedKPIs.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-navy-900 border-b pb-1">
-              Key Metrics
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {report.selectedKPIs.map((kpiTitle) => (
-                <div key={kpiTitle} className="p-3 bg-navy-50/50 rounded-lg border border-navy-100 text-center">
-                  <div className="text-[10px] font-bold text-navy-500 uppercase">{kpiTitle}</div>
-                  <div className="text-xl font-extrabold text-navy-950 mt-1">
-                    {getKPIValue(kpiTitle)}
-                  </div>
-                </div>
-              ))}
+            <div className="flex items-center justify-between border-b pb-1">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-navy-900">
+                {report.enableComparison ? 'Period / Cohort Comparative Metrics' : 'Key Metrics'}
+              </h2>
+              {report.enableComparison && (
+                <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
+                  {report.periodALabel || 'Cohort A'} vs {report.periodBLabel || 'Cohort B'}
+                </span>
+              )}
             </div>
+
+            {report.enableComparison && report.kpisA && report.kpisB ? (
+              <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {report.selectedKPIs.map((kpiTitle) => {
+                    const valA = getKPIRawVal(kpiTitle, report.kpisA);
+                    const valB = getKPIRawVal(kpiTitle, report.kpisB);
+                    const diff = typeof valA === 'number' && typeof valB === 'number' ? valB - valA : 0;
+                    const isIncrease = diff > 0;
+                    const isDecrease = diff < 0;
+
+                    return (
+                      <div key={kpiTitle} className="p-3 bg-navy-50/50 rounded-lg border border-navy-100 flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] font-bold text-navy-500 uppercase">{kpiTitle}</div>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <div>
+                              <div className="text-[9px] text-navy-400 font-semibold">{report.periodALabel || 'Group A'}</div>
+                              <div className="text-sm font-extrabold text-navy-900">{getKPIValue(kpiTitle, report.kpisA)}</div>
+                            </div>
+                            <div className="text-navy-300 font-bold">vs</div>
+                            <div>
+                              <div className="text-[9px] text-navy-400 font-semibold">{report.periodBLabel || 'Group B'}</div>
+                              <div className="text-sm font-extrabold text-navy-900">{getKPIValue(kpiTitle, report.kpisB)}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 ${
+                          isIncrease ? 'bg-emerald-100 text-emerald-800' : isDecrease ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {isIncrease && <TrendingUp className="w-3 h-3 text-emerald-600" />}
+                          {isDecrease && <TrendingDown className="w-3 h-3 text-rose-600" />}
+                          {!isIncrease && !isDecrease && <Minus className="w-3 h-3 text-slate-500" />}
+                          <span>{diff > 0 ? `+${diff.toFixed(1)}` : diff.toFixed(1)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {report.selectedKPIs.map((kpiTitle) => (
+                  <div key={kpiTitle} className="p-3 bg-navy-50/50 rounded-lg border border-navy-100 text-center">
+                    <div className="text-[10px] font-bold text-navy-500 uppercase">{kpiTitle}</div>
+                    <div className="text-xl font-extrabold text-navy-950 mt-1">
+                      {getKPIValue(kpiTitle)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

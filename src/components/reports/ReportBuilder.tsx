@@ -1,18 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useHR } from '@/lib/store/useHRStore';
-import { CustomReport } from '@/types/hr';
+import { CustomReport, EmployeeRecord } from '@/types/hr';
 import ReportPreview from './ReportPreview';
 import {
   FileText,
-  Plus,
   Trash2,
   Eye,
-  Printer,
   CheckCircle2,
   Edit3,
+  Calendar,
+  Layers,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from 'lucide-react';
+import { calculateOverallKPIs, applyFilters } from '@/lib/analytics/engine';
 
 export default function ReportBuilder() {
   const {
@@ -21,11 +25,19 @@ export default function ReportBuilder() {
     deleteReport,
     filterState,
     dataSourceMode,
+    allRecords,
     kpis,
   } = useHR();
 
   const [activeReport, setActiveReport] = useState<CustomReport | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+
+  // Period Comparison State
+  const [enableComparison, setEnableComparison] = useState(false);
+  const [periodAFilter, setPeriodAFilter] = useState<'All' | 'Sales' | 'Research & Development' | 'Human Resources'>('Sales');
+  const [periodBFilter, setPeriodBFilter] = useState<'All' | 'Sales' | 'Research & Development' | 'Human Resources'>('Research & Development');
+  const [periodALabel, setPeriodALabel] = useState('Sales Dept');
+  const [periodBLabel, setPeriodBLabel] = useState('R&D Dept');
 
   // Form State
   const [title, setTitle] = useState('Executive HR Analytics Report');
@@ -33,7 +45,7 @@ export default function ReportBuilder() {
     `This report summarizes key workforce indicators, attrition risks, and compensation insights based on the active dataset.`
   );
   const [commentary, setCommentary] = useState(
-    `Key Observations:\n1. Attrition rate is currently at ${kpis.attritionRate}% across the evaluated headcount.\n2. Overtime working hours continue to show a strong correlation with departure likelihood.\n3. Compensation review is recommended for job roles with elevated tenure and delayed promotion intervals.`
+    `Key Observations:\n1. Attrition rate is currently evaluated across active headcount.\n2. Overtime working hours continue to show a strong correlation with departure likelihood.\n3. Compensation review is recommended for job roles with elevated tenure and delayed promotion intervals.`
   );
 
   const [selectedKPIs, setSelectedKPIs] = useState<string[]>([
@@ -74,8 +86,28 @@ export default function ReportBuilder() {
     'Career & Promotion Review',
   ];
 
+  // Calculated Period Comparisons
+  const recordsA = useMemo(() => {
+    if (!enableComparison || periodAFilter === 'All') return allRecords;
+    return allRecords.filter(r => r.department === periodAFilter);
+  }, [allRecords, enableComparison, periodAFilter]);
+
+  const recordsB = useMemo(() => {
+    if (!enableComparison || periodBFilter === 'All') return allRecords;
+    return allRecords.filter(r => r.department === periodBFilter);
+  }, [allRecords, enableComparison, periodBFilter]);
+
+  const kpisA = useMemo(() => calculateOverallKPIs(recordsA), [recordsA]);
+  const kpisB = useMemo(() => calculateOverallKPIs(recordsB), [recordsB]);
+
   const handleCreateNewReport = () => {
-    const newReport: CustomReport = {
+    const newReport: CustomReport & {
+      enableComparison?: boolean;
+      periodALabel?: string;
+      periodBLabel?: string;
+      kpisA?: typeof kpis;
+      kpisB?: typeof kpis;
+    } = {
       id: `report-${Date.now()}`,
       title,
       createdAt: new Date().toLocaleDateString('en-US', {
@@ -89,10 +121,15 @@ export default function ReportBuilder() {
       executiveSummary,
       commentary,
       dataSource: dataSourceMode,
+      enableComparison,
+      periodALabel: enableComparison ? periodALabel : undefined,
+      periodBLabel: enableComparison ? periodBLabel : undefined,
+      kpisA: enableComparison ? kpisA : undefined,
+      kpisB: enableComparison ? kpisB : undefined,
     };
 
-    saveReport(newReport);
-    setActiveReport(newReport);
+    saveReport(newReport as any);
+    setActiveReport(newReport as any);
     setIsPreviewMode(true);
   };
 
@@ -111,15 +148,15 @@ export default function ReportBuilder() {
   return (
     <div className="space-y-6">
       
-      {/* Header Banner */}
-      <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header Banner - Marked print:hidden so it never shows in PDF exports */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden transition-colors duration-200">
         <div>
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-brand-600" />
-            <h2 className="text-lg font-bold text-navy-900">Session Report Builder</h2>
+            <FileText className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+            <h2 className="text-lg font-bold text-navy-900 dark:text-white">Session Report Builder</h2>
           </div>
-          <p className="text-xs text-navy-500 mt-1">
-            Build print-ready management reports with customized metrics, visual charts, and executive commentary.
+          <p className="text-xs text-navy-500 dark:text-slate-400 mt-1">
+            Build print-ready management reports with period comparison, customized metrics, visual charts, and executive commentary.
           </p>
         </div>
 
@@ -127,15 +164,15 @@ export default function ReportBuilder() {
           {isPreviewMode ? (
             <button
               onClick={() => setIsPreviewMode(false)}
-              className="px-3.5 py-1.5 rounded-lg border border-navy-200 text-navy-800 font-semibold text-xs hover:bg-navy-50 flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-lg border border-navy-200 dark:border-slate-700 text-navy-800 dark:text-slate-200 font-semibold text-xs hover:bg-navy-50 dark:hover:bg-slate-800 flex items-center gap-1.5 transition-all"
             >
-              <Edit3 className="w-3.5 h-3.5 text-navy-600" />
+              <Edit3 className="w-3.5 h-3.5 text-navy-600 dark:text-slate-400" />
               <span>Edit Report Configuration</span>
             </button>
           ) : (
             <button
               onClick={handleCreateNewReport}
-              className="px-4 py-1.5 rounded-lg bg-brand-900 hover:bg-brand-800 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-1.5 rounded-lg bg-brand-900 hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all"
             >
               <Eye className="w-3.5 h-3.5" />
               <span>Generate & Preview Report</span>
@@ -148,13 +185,13 @@ export default function ReportBuilder() {
       {isPreviewMode && activeReport ? (
         <ReportPreview report={activeReport} onEdit={() => setIsPreviewMode(false)} />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:hidden">
           
           {/* Saved Session Reports Column */}
-          <div className="bg-white rounded-xl border border-navy-100 p-5 shadow-xs h-fit space-y-4">
-            <div className="flex items-center justify-between border-b border-navy-100 pb-3">
-              <h3 className="text-sm font-bold text-navy-900">Saved Reports (Session)</h3>
-              <span className="text-xs text-navy-500 font-medium">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-5 shadow-xs h-fit space-y-4 transition-colors duration-200">
+            <div className="flex items-center justify-between border-b border-navy-100 dark:border-slate-800 pb-3">
+              <h3 className="text-sm font-bold text-navy-900 dark:text-white">Saved Reports (Session)</h3>
+              <span className="text-xs text-navy-500 dark:text-slate-400 font-medium">
                 {customReports.length} saved
               </span>
             </div>
@@ -166,8 +203,8 @@ export default function ReportBuilder() {
                     key={rpt.id}
                     className={`p-3 rounded-lg border text-xs flex items-center justify-between transition-all cursor-pointer ${
                       activeReport?.id === rpt.id
-                        ? 'bg-brand-50 border-brand-300 text-brand-950 font-semibold'
-                        : 'border-navy-100 hover:bg-navy-50 text-navy-800'
+                        ? 'bg-brand-50 dark:bg-slate-800 border-brand-300 dark:border-brand-500 text-brand-950 dark:text-white font-semibold'
+                        : 'border-navy-100 dark:border-slate-800 hover:bg-navy-50 dark:hover:bg-slate-800/60 text-navy-800 dark:text-slate-300'
                     }`}
                     onClick={() => {
                       setActiveReport(rpt);
@@ -181,7 +218,7 @@ export default function ReportBuilder() {
                   >
                     <div>
                       <div className="font-bold">{rpt.title}</div>
-                      <div className="text-[10px] text-navy-500 mt-0.5">{rpt.createdAt}</div>
+                      <div className="text-[10px] text-navy-500 dark:text-slate-400 mt-0.5">{rpt.createdAt}</div>
                     </div>
 
                     <button
@@ -198,7 +235,7 @@ export default function ReportBuilder() {
                   </div>
                 ))
               ) : (
-                <div className="text-xs text-navy-400 italic py-4 text-center">
+                <div className="text-xs text-navy-400 dark:text-slate-500 italic py-4 text-center">
                   No saved reports in current session. Fill out the form and generate your first management report.
                 </div>
               )}
@@ -206,33 +243,100 @@ export default function ReportBuilder() {
           </div>
 
           {/* Report Configuration Form */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-navy-100 p-6 shadow-xs space-y-5 text-xs">
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-navy-100 dark:border-slate-800 p-6 shadow-xs space-y-5 text-xs transition-colors duration-200">
             
             {/* Title */}
             <div className="space-y-1.5">
-              <label className="font-bold text-navy-900 block text-xs">Report Title</label>
+              <label className="font-bold text-navy-900 dark:text-slate-200 block text-xs">Report Title</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-navy-200 rounded-lg text-navy-900 font-semibold focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg text-navy-900 font-semibold focus:ring-2 focus:ring-brand-500"
               />
+            </div>
+
+            {/* Period / Department Comparison Section */}
+            <div className="p-4 rounded-xl border border-brand-200 dark:border-slate-800 bg-brand-50/40 dark:bg-slate-800/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-navy-900 dark:text-white text-xs">
+                  <Calendar className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                  <span>Comparative Period / Segment Analysis</span>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-brand-900 dark:text-brand-300">
+                  <input
+                    type="checkbox"
+                    checked={enableComparison}
+                    onChange={(e) => setEnableComparison(e.target.checked)}
+                    className="w-4 h-4 rounded text-brand-600 focus:ring-brand-500"
+                  />
+                  <span>Enable Period/Cohort Comparison</span>
+                </label>
+              </div>
+
+              {enableComparison && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-brand-200/60 dark:border-slate-700">
+                  {/* Cohort A */}
+                  <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
+                    <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Primary Group (Cohort A)</label>
+                    <input
+                      type="text"
+                      value={periodALabel}
+                      onChange={(e) => setPeriodALabel(e.target.value)}
+                      placeholder="Label e.g. Q1 2026 or Sales"
+                      className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs"
+                    />
+                    <select
+                      value={periodAFilter}
+                      onChange={(e) => setPeriodAFilter(e.target.value as any)}
+                      className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs font-semibold"
+                    >
+                      <option value="All">All Departments</option>
+                      <option value="Sales">Sales</option>
+                      <option value="Research & Development">Research & Development</option>
+                      <option value="Human Resources">Human Resources</option>
+                    </select>
+                  </div>
+
+                  {/* Cohort B */}
+                  <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
+                    <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Comparison Group (Cohort B)</label>
+                    <input
+                      type="text"
+                      value={periodBLabel}
+                      onChange={(e) => setPeriodBLabel(e.target.value)}
+                      placeholder="Label e.g. Q2 2026 or R&D"
+                      className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs"
+                    />
+                    <select
+                      value={periodBFilter}
+                      onChange={(e) => setPeriodBFilter(e.target.value as any)}
+                      className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs font-semibold"
+                    >
+                      <option value="All">All Departments</option>
+                      <option value="Sales">Sales</option>
+                      <option value="Research & Development">Research & Development</option>
+                      <option value="Human Resources">Human Resources</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Executive Summary */}
             <div className="space-y-1.5">
-              <label className="font-bold text-navy-900 block text-xs">Executive Summary</label>
+              <label className="font-bold text-navy-900 dark:text-slate-200 block text-xs">Executive Summary</label>
               <textarea
                 rows={2}
                 value={executiveSummary}
                 onChange={(e) => setExecutiveSummary(e.target.value)}
-                className="w-full px-3 py-2 border border-navy-200 rounded-lg text-navy-900 focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg text-navy-900 focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
             {/* Select KPIs */}
             <div className="space-y-2">
-              <label className="font-bold text-navy-900 block text-xs">
+              <label className="font-bold text-navy-900 dark:text-slate-200 block text-xs">
                 Select Key Metrics to Include ({selectedKPIs.length})
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -245,12 +349,12 @@ export default function ReportBuilder() {
                       onClick={() => toggleKPI(kpi)}
                       className={`p-2 rounded-lg border text-left flex items-center justify-between transition-all ${
                         isChecked
-                          ? 'bg-brand-50 border-brand-300 text-brand-900 font-semibold'
-                          : 'border-navy-200 text-navy-600 hover:bg-navy-50'
+                          ? 'bg-brand-50 dark:bg-slate-800 border-brand-300 dark:border-brand-500 text-brand-900 dark:text-white font-semibold'
+                          : 'border-navy-200 dark:border-slate-700 text-navy-600 dark:text-slate-400 hover:bg-navy-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       <span className="text-[11px]">{kpi}</span>
-                      {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600 shrink-0" />}
+                      {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0" />}
                     </button>
                   );
                 })}
@@ -259,7 +363,7 @@ export default function ReportBuilder() {
 
             {/* Select Visualizations */}
             <div className="space-y-2">
-              <label className="font-bold text-navy-900 block text-xs">
+              <label className="font-bold text-navy-900 dark:text-slate-200 block text-xs">
                 Select Visualizations to Include ({selectedCharts.length})
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -272,12 +376,12 @@ export default function ReportBuilder() {
                       onClick={() => toggleChart(chart)}
                       className={`p-2 rounded-lg border text-left flex items-center justify-between transition-all ${
                         isChecked
-                          ? 'bg-brand-50 border-brand-300 text-brand-900 font-semibold'
-                          : 'border-navy-200 text-navy-600 hover:bg-navy-50'
+                          ? 'bg-brand-50 dark:bg-slate-800 border-brand-300 dark:border-brand-500 text-brand-900 dark:text-white font-semibold'
+                          : 'border-navy-200 dark:border-slate-700 text-navy-600 dark:text-slate-400 hover:bg-navy-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       <span className="text-[11px]">{chart}</span>
-                      {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600 shrink-0" />}
+                      {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0" />}
                     </button>
                   );
                 })}
@@ -286,20 +390,20 @@ export default function ReportBuilder() {
 
             {/* Commentary */}
             <div className="space-y-1.5">
-              <label className="font-bold text-navy-900 block text-xs">Observations & Managerial Commentary</label>
+              <label className="font-bold text-navy-900 dark:text-slate-200 block text-xs">Observations & Managerial Commentary</label>
               <textarea
                 rows={4}
                 value={commentary}
                 onChange={(e) => setCommentary(e.target.value)}
-                className="w-full px-3 py-2 border border-navy-200 rounded-lg text-navy-900 font-mono text-[11px] focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg text-navy-900 font-mono text-[11px] focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
             {/* Generate Button */}
-            <div className="pt-3 border-t border-navy-100 flex justify-end">
+            <div className="pt-3 border-t border-navy-100 dark:border-slate-800 flex justify-end">
               <button
                 onClick={handleCreateNewReport}
-                className="px-5 py-2.5 rounded-lg bg-brand-900 hover:bg-brand-800 text-white font-bold flex items-center gap-2 shadow-sm"
+                className="px-5 py-2.5 rounded-lg bg-brand-900 hover:bg-brand-800 dark:bg-brand-600 dark:hover:bg-brand-500 text-white font-bold flex items-center gap-2 shadow-sm transition-all"
               >
                 <Eye className="w-4 h-4" />
                 <span>Generate Management Report</span>
