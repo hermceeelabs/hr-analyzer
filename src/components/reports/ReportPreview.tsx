@@ -2,11 +2,9 @@
 
 import React from 'react';
 import { useHR } from '@/lib/store/useHRStore';
-import { CustomReport } from '@/types/hr';
+import { CustomReport, OverallKPIs } from '@/types/hr';
 import {
   groupByDepartment,
-  groupByJobRole,
-  groupByJobLevel,
   groupByOvertime,
 } from '@/lib/analytics/engine';
 import {
@@ -18,7 +16,9 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { Printer, Edit3, Database, FileSpreadsheet, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Printer, Edit3, Database, FileSpreadsheet } from 'lucide-react';
+
+/* ─────────────── Types ─────────────── */
 
 interface CustomReportWithComparison extends CustomReport {
   enableComparison?: boolean;
@@ -27,8 +27,8 @@ interface CustomReportWithComparison extends CustomReport {
   periodBLabel?: string;
   dateRangeA?: { start: string; end: string };
   dateRangeB?: { start: string; end: string };
-  kpisA?: any;
-  kpisB?: any;
+  kpisA?: OverallKPIs;
+  kpisB?: OverallKPIs;
 }
 
 interface ReportPreviewProps {
@@ -36,8 +36,40 @@ interface ReportPreviewProps {
   onEdit: () => void;
 }
 
+/* ─────────────── Card taxonomy ─────────────── */
+
+type CardCategory =
+  | 'composition'   // count / headcount → neutral Δ + composition bar
+  | 'neutral'       // averages (age, tenure, income, satisfaction) → neutral Δ, no color
+  | 'directional';  // rates where higher/lower is clearly good/bad → semantic color
+
+interface CardMeta {
+  category: CardCategory;
+  unit: string;          // e.g. 'employees', '$', 'yrs', 'pp', ''
+  prefix?: string;       // e.g. '$' for currency
+  favorableDirection?: 'lower' | 'higher'; // only for directional
+  isRate?: boolean;      // the value itself is a %, so delta is in pp
+  isCurrency?: boolean;
+  isInteger?: boolean;
+}
+
+const CARD_TAXONOMY: Record<string, CardMeta> = {
+  'Total Headcount':       { category: 'composition', unit: 'employees', isInteger: true },
+  'Active Employees':      { category: 'composition', unit: 'employees', isInteger: true },
+  'Attrition Rate':        { category: 'directional', unit: 'pp', isRate: true, favorableDirection: 'lower' },
+  'Average Monthly Income': { category: 'neutral', unit: '', prefix: '$', isCurrency: true },
+  'Average Workforce Age': { category: 'neutral', unit: 'yrs' },
+  'Average Tenure':        { category: 'neutral', unit: 'yrs' },
+  'Overtime Rate':         { category: 'directional', unit: 'pp', isRate: true, favorableDirection: 'lower' },
+  'Avg Job Satisfaction':  { category: 'directional', unit: '', favorableDirection: 'higher' },
+};
+
+const DEFAULT_META: CardMeta = { category: 'neutral', unit: '' };
+
+/* ─────────────── Component ─────────────── */
+
 export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
-  const { filteredRecords, kpis } = useHR();
+  const { filteredRecords, kpis, allRecords } = useHR();
 
   const handlePrint = () => {
     window.print();
@@ -46,82 +78,318 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
   const deptData = groupByDepartment(filteredRecords);
   const otData = groupByOvertime(filteredRecords);
 
-  const getKPIValue = (title: string, targetKpis = kpis) => {
+  /* ── KPI value extraction ── */
+
+  const getKPIFormatted = (title: string, targetKpis: OverallKPIs = kpis) => {
     switch (title) {
-      case 'Total Headcount':
-        return targetKpis.totalEmployees.toLocaleString();
-      case 'Active Employees':
-        return targetKpis.activeEmployees.toLocaleString();
-      case 'Attrition Rate':
-        return `${targetKpis.attritionRate}%`;
-      case 'Average Monthly Income':
-        return `$${targetKpis.averageSalary.toLocaleString()}`;
-      case 'Average Workforce Age':
-        return `${targetKpis.averageAge} yrs`;
-      case 'Average Tenure':
-        return `${targetKpis.averageTenure} yrs`;
-      case 'Overtime Rate':
-        return `${targetKpis.overtimeRate}%`;
-      case 'Avg Job Satisfaction':
-        return `${targetKpis.averageJobSatisfaction} / 5`;
-      default:
-        return 'N/A';
+      case 'Total Headcount':        return targetKpis.totalEmployees.toLocaleString();
+      case 'Active Employees':       return targetKpis.activeEmployees.toLocaleString();
+      case 'Attrition Rate':         return `${targetKpis.attritionRate}%`;
+      case 'Average Monthly Income': return `$${targetKpis.averageSalary.toLocaleString()}`;
+      case 'Average Workforce Age':  return `${targetKpis.averageAge} yrs`;
+      case 'Average Tenure':         return `${targetKpis.averageTenure} yrs`;
+      case 'Overtime Rate':          return `${targetKpis.overtimeRate}%`;
+      case 'Avg Job Satisfaction':   return `${targetKpis.averageJobSatisfaction} / 5`;
+      default:                       return 'N/A';
     }
   };
 
-  const getKPIRawVal = (title: string, targetKpis = kpis) => {
+  const getKPIRaw = (title: string, targetKpis: OverallKPIs = kpis): number => {
     switch (title) {
-      case 'Total Headcount': return targetKpis.totalEmployees;
-      case 'Active Employees': return targetKpis.activeEmployees;
-      case 'Attrition Rate': return targetKpis.attritionRate;
+      case 'Total Headcount':        return targetKpis.totalEmployees;
+      case 'Active Employees':       return targetKpis.activeEmployees;
+      case 'Attrition Rate':         return targetKpis.attritionRate;
       case 'Average Monthly Income': return targetKpis.averageSalary;
-      case 'Average Workforce Age': return targetKpis.averageAge;
-      case 'Average Tenure': return targetKpis.averageTenure;
-      case 'Overtime Rate': return targetKpis.overtimeRate;
-      case 'Avg Job Satisfaction': return targetKpis.averageJobSatisfaction;
-      default: return 0;
+      case 'Average Workforce Age':  return targetKpis.averageAge;
+      case 'Average Tenure':         return targetKpis.averageTenure;
+      case 'Overtime Rate':          return targetKpis.overtimeRate;
+      case 'Avg Job Satisfaction':   return targetKpis.averageJobSatisfaction;
+      default:                       return 0;
     }
   };
 
-  // Compute Delta with proper contextual formatting (Rate % vs Currency $ vs Count)
-  const getKPIDeltaMeta = (title: string, valA: number, valB: number) => {
-    const diff = valB - valA;
-    if (Math.abs(diff) < 0.01) {
-      return { text: '0.0', type: 'neutral', icon: Minus };
-    }
+  /* ── Delta formatting ── */
 
-    const isRate = title.includes('Rate') || title.includes('Satisfaction');
-    const isCurrency = title.includes('Income') || title.includes('Salary');
-    const isInteger = title.includes('Headcount') || title.includes('Employees') || title.includes('Count');
-    const formattedDiff = isCurrency
-      ? `$${Math.abs(diff).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-      : isRate
-      ? `${Math.abs(diff).toFixed(1)}%`
-      : isInteger
-      ? `${Math.abs(diff).toLocaleString()}`
-      : `${Math.abs(diff).toFixed(1)}`;
-
-    const text = diff > 0 ? `+${formattedDiff}` : `-${formattedDiff}`;
-
-    // Contextual badge coloring: Attrition Rate increase is negative/danger (red)
-    let badgeType: 'success' | 'danger' | 'neutral' = 'neutral';
-    if (title === 'Attrition Rate' || title === 'Overtime Rate') {
-      badgeType = diff > 0 ? 'danger' : 'success';
-    } else {
-      badgeType = diff > 0 ? 'success' : 'danger';
-    }
-
-    return {
-      text,
-      badgeType,
-      icon: diff > 0 ? TrendingUp : TrendingDown,
-    };
+  const formatDelta = (absDiff: number, meta: CardMeta): string => {
+    if (meta.isCurrency) return `$${absDiff.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    if (meta.isInteger)  return absDiff.toLocaleString();
+    if (meta.isRate)     return `${absDiff.toFixed(1)} pp`;
+    return absDiff.toFixed(meta.unit === 'yrs' ? 1 : 2);
   };
+
+  const unitSuffix = (meta: CardMeta): string => {
+    if (meta.isRate || meta.isCurrency || !meta.unit) return '';
+    return ` ${meta.unit}`;
+  };
+
+  /* ── Composition helpers (total-pool share) ── */
+
+  const totalPoolSize = allRecords.length;
+
+  const getCompositionShares = (valA: number, valB: number) => {
+    const other = Math.max(0, totalPoolSize - valA - valB);
+    const pctA = totalPoolSize > 0 ? (valA / totalPoolSize * 100) : 0;
+    const pctB = totalPoolSize > 0 ? (valB / totalPoolSize * 100) : 0;
+    const pctO = totalPoolSize > 0 ? (other / totalPoolSize * 100) : 0;
+    return { other, pctA, pctB, pctO };
+  };
+
+  /* ── Render helpers ── */
+
+  const labelA = report.periodALabel || 'Group A';
+  const labelB = report.periodBLabel || 'Group B';
+
+  const renderComparisonCards = (kpisA: OverallKPIs, kpisB: OverallKPIs) => {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {report.selectedKPIs.map((kpiTitle) => {
+          const meta = CARD_TAXONOMY[kpiTitle] || DEFAULT_META;
+          const valA = getKPIRaw(kpiTitle, kpisA);
+          const valB = getKPIRaw(kpiTitle, kpisB);
+          const diff = valB - valA;
+          const absDiff = Math.abs(diff);
+          const isZero = absDiff < 0.01;
+          const formattedDelta = formatDelta(absDiff, meta);
+          const suffix = unitSuffix(meta);
+
+          // Which group is higher?
+          const higherLabel = diff > 0 ? labelB : labelA;
+
+          if (meta.category === 'composition') {
+            return renderCompositionCard(kpiTitle, meta, kpisA, kpisB, valA, valB, diff, absDiff, isZero, formattedDelta, suffix, higherLabel);
+          }
+          if (meta.category === 'directional') {
+            return renderDirectionalCard(kpiTitle, meta, kpisA, kpisB, valA, valB, diff, absDiff, isZero, formattedDelta, suffix, higherLabel);
+          }
+          return renderNeutralCard(kpiTitle, meta, kpisA, kpisB, valA, valB, diff, absDiff, isZero, formattedDelta, suffix, higherLabel);
+        })}
+      </div>
+    );
+  };
+
+  /* ── COMPOSITION CARD ── */
+  const renderCompositionCard = (
+    kpiTitle: string, meta: CardMeta,
+    kpisA: OverallKPIs, kpisB: OverallKPIs,
+    valA: number, valB: number,
+    diff: number, absDiff: number, isZero: boolean,
+    formattedDelta: string, suffix: string, higherLabel: string,
+  ) => {
+    const { pctA, pctB, pctO } = getCompositionShares(valA, valB);
+
+    return (
+      <div key={kpiTitle} className="p-3.5 bg-navy-50/40 rounded-lg border border-navy-100 break-inside-avoid">
+        {/* Title */}
+        <div className="text-[10px] font-bold text-navy-500 uppercase tracking-wide mb-2">{kpiTitle}</div>
+
+        {/* Primary values */}
+        <div className="flex items-end gap-4 mb-2.5">
+          <div>
+            <div className="text-[9px] text-navy-400 font-semibold">{labelA}</div>
+            <div className="text-lg font-extrabold text-navy-900 leading-tight">{getKPIFormatted(kpiTitle, kpisA)}</div>
+          </div>
+          <div className="text-navy-300 font-bold text-xs pb-0.5">vs</div>
+          <div>
+            <div className="text-[9px] text-navy-400 font-semibold">{labelB}</div>
+            <div className="text-lg font-extrabold text-navy-900 leading-tight">{getKPIFormatted(kpiTitle, kpisB)}</div>
+          </div>
+        </div>
+
+        {/* Neutral delta badge */}
+        <div className="flex items-center gap-2 mb-2">
+          {!isZero ? (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px] font-semibold text-slate-600">
+              <span className="text-slate-400">Δ</span> {formattedDelta}{suffix}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200 text-[10px] font-semibold text-slate-400">
+              No difference
+            </span>
+          )}
+          {!isZero && (
+            <span className="text-[9px] text-slate-500 font-medium">
+              {higherLabel} +{formattedDelta}
+            </span>
+          )}
+        </div>
+
+        {/* Composition proportion bar */}
+        <div className="space-y-1">
+          <div className="flex h-2 rounded-full overflow-hidden bg-slate-100 border border-slate-200">
+            <div
+              className="bg-blue-400/80 transition-all"
+              style={{ width: `${pctA}%` }}
+              title={`${labelA}: ${pctA.toFixed(1)}%`}
+            />
+            <div
+              className="bg-indigo-500/80 transition-all"
+              style={{ width: `${pctB}%` }}
+              title={`${labelB}: ${pctB.toFixed(1)}%`}
+            />
+            {pctO > 0.5 && (
+              <div
+                className="bg-slate-300/80 transition-all"
+                style={{ width: `${pctO}%` }}
+                title={`Other: ${pctO.toFixed(1)}%`}
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-[9px] text-slate-500 font-medium">
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-blue-400/80" />
+              {labelA} {pctA.toFixed(0)}%
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-indigo-500/80" />
+              {labelB} {pctB.toFixed(0)}%
+            </span>
+            {pctO > 0.5 && (
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-slate-300/80" />
+                Other {pctO.toFixed(0)}%
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* ── NEUTRAL CARD ── */
+  const renderNeutralCard = (
+    kpiTitle: string, meta: CardMeta,
+    kpisA: OverallKPIs, kpisB: OverallKPIs,
+    valA: number, valB: number,
+    diff: number, absDiff: number, isZero: boolean,
+    formattedDelta: string, suffix: string, higherLabel: string,
+  ) => {
+    return (
+      <div key={kpiTitle} className="p-3.5 bg-navy-50/40 rounded-lg border border-navy-100 flex items-center justify-between break-inside-avoid">
+        <div>
+          <div className="text-[10px] font-bold text-navy-500 uppercase tracking-wide mb-2">{kpiTitle}</div>
+          <div className="flex items-end gap-4">
+            <div>
+              <div className="text-[9px] text-navy-400 font-semibold">{labelA}</div>
+              <div className="text-lg font-extrabold text-navy-900 leading-tight">{getKPIFormatted(kpiTitle, kpisA)}</div>
+            </div>
+            <div className="text-navy-300 font-bold text-xs pb-0.5">vs</div>
+            <div>
+              <div className="text-[9px] text-navy-400 font-semibold">{labelB}</div>
+              <div className="text-lg font-extrabold text-navy-900 leading-tight">{getKPIFormatted(kpiTitle, kpisB)}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Neutral delta — no color, no arrow */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          {!isZero ? (
+            <>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px] font-semibold text-slate-600">
+                <span className="text-slate-400">Δ</span> {formattedDelta}{suffix}
+              </span>
+              <span className="text-[9px] text-slate-400 font-medium">
+                {higherLabel} +{meta.prefix || ''}{formattedDelta}{suffix}
+              </span>
+            </>
+          ) : (
+            <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-[10px] font-semibold text-slate-400">
+              No difference
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /* ── DIRECTIONAL / PERFORMANCE CARD ── */
+  const renderDirectionalCard = (
+    kpiTitle: string, meta: CardMeta,
+    kpisA: OverallKPIs, kpisB: OverallKPIs,
+    valA: number, valB: number,
+    diff: number, absDiff: number, isZero: boolean,
+    formattedDelta: string, suffix: string, higherLabel: string,
+  ) => {
+    // Determine if the delta is favorable, unfavorable, or zero
+    let sentiment: 'favorable' | 'unfavorable' | 'neutral' = 'neutral';
+    if (!isZero) {
+      if (meta.favorableDirection === 'lower') {
+        // Lower is better → if B is higher than A, that's unfavorable
+        sentiment = diff > 0 ? 'unfavorable' : 'favorable';
+      } else {
+        // Higher is better → if B is higher than A, that's favorable
+        sentiment = diff > 0 ? 'favorable' : 'unfavorable';
+      }
+    }
+
+    const badgeClasses = {
+      favorable:   'bg-emerald-50 border-emerald-200 text-emerald-700',
+      unfavorable: 'bg-rose-50 border-rose-200 text-rose-700',
+      neutral:     'bg-slate-50 border-slate-200 text-slate-500',
+    }[sentiment];
+
+    const dotColor = {
+      favorable:   'bg-emerald-500',
+      unfavorable: 'bg-rose-500',
+      neutral:     'bg-slate-400',
+    }[sentiment];
+
+    // For rate differences: show which group has the worse value
+    const worseLabel = meta.favorableDirection === 'lower'
+      ? (diff > 0 ? labelB : labelA)
+      : (diff > 0 ? labelA : labelB);
+
+    return (
+      <div key={kpiTitle} className="p-3.5 bg-navy-50/40 rounded-lg border border-navy-100 flex items-center justify-between break-inside-avoid">
+        <div>
+          <div className="text-[10px] font-bold text-navy-500 uppercase tracking-wide mb-2">{kpiTitle}</div>
+          <div className="flex items-end gap-4">
+            <div>
+              <div className="text-[9px] text-navy-400 font-semibold">{labelA}</div>
+              <div className="text-lg font-extrabold text-navy-900 leading-tight">{getKPIFormatted(kpiTitle, kpisA)}</div>
+            </div>
+            <div className="text-navy-300 font-bold text-xs pb-0.5">vs</div>
+            <div>
+              <div className="text-[9px] text-navy-400 font-semibold">{labelB}</div>
+              <div className="text-lg font-extrabold text-navy-900 leading-tight">{getKPIFormatted(kpiTitle, kpisB)}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Directional delta — semantic color */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          {!isZero ? (
+            <>
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[10px] font-semibold ${badgeClasses}`}>
+                <span className={`inline-block w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                {higherLabel} +{formattedDelta}
+              </span>
+              {sentiment === 'unfavorable' && (
+                <span className="text-[9px] text-rose-400 font-medium">
+                  Unfavorable
+                </span>
+              )}
+              {sentiment === 'favorable' && (
+                <span className="text-[9px] text-emerald-400 font-medium">
+                  Favorable
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-[10px] font-semibold text-slate-400">
+              No difference
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  /* ─────────────── RENDER ─────────────── */
 
   return (
     <div className="space-y-6">
-      
-      {/* Top Action Bar (Marked print:hidden so it NEVER appears in PDF exports) */}
+
+      {/* Top Action Bar */}
       <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-xl border border-navy-100 dark:border-slate-800 shadow-xs print:hidden transition-colors duration-200">
         <button
           onClick={onEdit}
@@ -142,7 +410,7 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
 
       {/* Print Document Container */}
       <div className="bg-white rounded-xl border border-navy-200 p-8 sm:p-12 shadow-md max-w-4xl mx-auto space-y-8 text-navy-900 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full">
-        
+
         {/* Document Header */}
         <div className="border-b border-navy-900/20 pb-6 flex items-start justify-between break-inside-avoid">
           <div>
@@ -158,10 +426,10 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
           </div>
         </div>
 
-        {/* Reporting Context / Selected Filters */}
+        {/* Reporting Context */}
         <div className="bg-navy-50/70 rounded-lg p-4 border border-navy-100 text-xs break-inside-avoid">
           <div className="font-bold text-navy-900 uppercase tracking-wider mb-2 text-[11px]">
-            Reporting Context & Filters Applied:
+            Reporting Context &amp; Filters Applied:
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-navy-700">
             <div>
@@ -193,21 +461,26 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
           <p className="text-xs text-navy-700 leading-relaxed">{report.executiveSummary}</p>
         </div>
 
-        {/* Key Metrics / Period Comparison View */}
+        {/* Key Metrics / Period Comparison */}
         {report.selectedKPIs.length > 0 && (
           <div className="space-y-3 break-inside-avoid">
             <div className="flex items-center justify-between border-b pb-1">
               <h2 className="text-sm font-bold uppercase tracking-wider text-navy-900">
-                {report.enableComparison ? 'Period / Cohort Comparative Metrics' : 'Key Metrics'}
+                {report.enableComparison ? 'Comparative Metrics' : 'Key Metrics'}
               </h2>
               {report.enableComparison && (
                 <div className="flex flex-col items-end gap-0.5">
                   <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
-                    {report.periodALabel || 'Group A'} vs {report.periodBLabel || 'Group B'}
+                    {labelA} vs {labelB}
                   </span>
                   {report.comparisonMode === 'date' && report.dateRangeA && report.dateRangeB && (
                     <span className="text-[9px] text-navy-400 font-medium">
                       {report.dateRangeA.start} → {report.dateRangeA.end} &nbsp;|&nbsp; {report.dateRangeB.start} → {report.dateRangeB.end}
+                    </span>
+                  )}
+                  {report.comparisonMode === 'cohort' && (
+                    <span className="text-[9px] text-navy-400 font-medium">
+                      Segment comparison · stat difference
                     </span>
                   )}
                 </div>
@@ -216,51 +489,7 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
 
             {report.enableComparison && report.kpisA && report.kpisB ? (
               <div className="space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {report.selectedKPIs.map((kpiTitle) => {
-                    const valA = getKPIRawVal(kpiTitle, report.kpisA);
-                    const valB = getKPIRawVal(kpiTitle, report.kpisB);
-                    const meta = getKPIDeltaMeta(kpiTitle, valA, valB);
-                    const IconComponent = meta.icon;
-
-                    return (
-                      <div key={kpiTitle} className="p-3 bg-navy-50/50 rounded-lg border border-navy-100 flex items-center justify-between break-inside-avoid">
-                        <div>
-                          <div className="text-[10px] font-bold text-navy-500 uppercase">{kpiTitle}</div>
-                          <div className="flex items-center gap-3 mt-1.5">
-                            <div>
-                              <div className="text-[9px] text-navy-400 font-semibold">{report.periodALabel || 'Group A'}</div>
-                              <div className="text-sm font-extrabold text-navy-900">{getKPIValue(kpiTitle, report.kpisA)}</div>
-                            </div>
-                            <div className="text-navy-300 font-bold">vs</div>
-                            <div>
-                              <div className="text-[9px] text-navy-400 font-semibold">{report.periodBLabel || 'Group B'}</div>
-                              <div className="text-sm font-extrabold text-navy-900">{getKPIValue(kpiTitle, report.kpisB)}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Comparison Stat Difference / Trend Badge */}
-                        <div className={`px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 shrink-0 ${
-                          report.comparisonMode === 'date'
-                            ? meta.badgeType === 'success'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : meta.badgeType === 'danger'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-slate-100 text-slate-700'
-                            : 'bg-slate-100 text-slate-700 border border-slate-200'
-                        }`}>
-                          {report.comparisonMode === 'date' ? (
-                            <IconComponent className="w-3 h-3" />
-                          ) : (
-                            <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-tighter mr-0.5">Diff</span>
-                          )}
-                          <span>{meta.text}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                {renderComparisonCards(report.kpisA, report.kpisB)}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -268,7 +497,7 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
                   <div key={kpiTitle} className="p-3 bg-navy-50/50 rounded-lg border border-navy-100 text-center break-inside-avoid">
                     <div className="text-[10px] font-bold text-navy-500 uppercase">{kpiTitle}</div>
                     <div className="text-xl font-extrabold text-navy-950 mt-1">
-                      {getKPIValue(kpiTitle)}
+                      {getKPIFormatted(kpiTitle)}
                     </div>
                   </div>
                 ))}
@@ -352,10 +581,10 @@ export default function ReportPreview({ report, onEdit }: ReportPreviewProps) {
           </div>
         )}
 
-        {/* Observations / Commentary */}
+        {/* Observations & Commentary */}
         <div className="space-y-2 break-inside-avoid">
           <h2 className="text-sm font-bold uppercase tracking-wider text-navy-900 border-b pb-1">
-            Observations & Commentary
+            Observations &amp; Commentary
           </h2>
           <pre className="text-xs text-navy-800 font-sans whitespace-pre-wrap leading-relaxed bg-navy-50/40 p-4 rounded-lg border border-navy-100">
             {report.commentary}
