@@ -159,6 +159,12 @@ export interface OverallKPIs {
   averageDistance: number;
 }
 
+export interface ComparisonGroup {
+  label: string;
+  department: string;
+  kpis: OverallKPIs;
+}
+
 export interface CustomReport {
   id: string;
   title: string;
@@ -179,4 +185,6 @@ export interface CustomReport {
   kpisB?: OverallKPIs;
   recordsA?: EmployeeRecord[];
   recordsB?: EmployeeRecord[];
+  comparisonGroups?: ComparisonGroup[];
+  selectedDepartments?: string[];
 }

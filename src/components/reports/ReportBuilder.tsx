@@ -35,15 +35,30 @@ export default function ReportBuilder() {
   // Period / Cohort Comparison State
   const [enableComparison, setEnableComparison] = useState(false);
   const [comparisonMode, setComparisonMode] = useState<'cohort' | 'date'>('cohort');
-  const [periodAFilter, setPeriodAFilter] = useState<'All' | 'Sales' | 'Research & Development' | 'Human Resources'>('Sales');
-  const [periodBFilter, setPeriodBFilter] = useState<'All' | 'Sales' | 'Research & Development' | 'Human Resources'>('Research & Development');
-  const [periodALabel, setPeriodALabel] = useState('Sales Dept');
-  const [periodBLabel, setPeriodBLabel] = useState('R&D Dept');
+
+  // Multi-select departments for cohort comparison
+  const ALL_DEPARTMENTS = ['Sales', 'Research & Development', 'Human Resources'];
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>(['Sales', 'Research & Development']);
+
+  const toggleDepartment = (dept: string) => {
+    setSelectedDepartments((prev) => {
+      if (prev.includes(dept)) {
+        // Don't allow fewer than 2
+        if (prev.length <= 2) return prev;
+        return prev.filter((d) => d !== dept);
+      }
+      return [...prev, dept];
+    });
+  };
+
+  const selectAllDepartments = () => setSelectedDepartments([...ALL_DEPARTMENTS]);
 
   // Date/Time Period Filters — defaults cover typical hire cohorts in the IBM dataset
   const CURRENT_YEAR = new Date().getFullYear();
   const [dateRangeA, setDateRangeA] = useState({ start: `${CURRENT_YEAR - 15}-01-01`, end: `${CURRENT_YEAR - 8}-12-31` });
   const [dateRangeB, setDateRangeB] = useState({ start: `${CURRENT_YEAR - 7}-01-01`, end: `${CURRENT_YEAR}-12-31` });
+  const [periodALabel, setPeriodALabel] = useState('Baseline Period');
+  const [periodBLabel, setPeriodBLabel] = useState('Current Period');
 
   // Promotion Rule Config
   const [promoConfig, setPromoConfig] = useState<PromotionRuleConfig>(DEFAULT_PROMOTION_CONFIG);
@@ -104,34 +119,39 @@ export default function ReportBuilder() {
   const REFERENCE_YEAR = new Date().getFullYear();
   const getHireYear = (yearsAtCompany: number) => REFERENCE_YEAR - Math.round(yearsAtCompany);
 
-  // Calculated Period Comparisons
+  // Compute comparison groups for cohort mode
+  const comparisonGroups = useMemo(() => {
+    if (!enableComparison || comparisonMode !== 'cohort') return [];
+    return selectedDepartments.map((dept) => {
+      const records = allRecords.filter((r) => r.department === dept);
+      return {
+        label: dept,
+        department: dept,
+        kpis: calculateOverallKPIs(records),
+      };
+    });
+  }, [allRecords, enableComparison, comparisonMode, selectedDepartments]);
+
+  // Date mode still uses A/B periods
   const recordsA = useMemo(() => {
-    if (!enableComparison) return allRecords;
-    if (comparisonMode === 'date') {
-      const startYear = new Date(dateRangeA.start).getFullYear();
-      const endYear = new Date(dateRangeA.end).getFullYear();
-      return allRecords.filter(r => {
-        const hireYear = getHireYear(r.yearsAtCompany);
-        return hireYear >= startYear && hireYear <= endYear;
-      });
-    }
-    if (periodAFilter === 'All') return allRecords;
-    return allRecords.filter(r => r.department === periodAFilter);
-  }, [allRecords, enableComparison, comparisonMode, periodAFilter, dateRangeA]);
+    if (!enableComparison || comparisonMode !== 'date') return allRecords;
+    const startYear = new Date(dateRangeA.start).getFullYear();
+    const endYear = new Date(dateRangeA.end).getFullYear();
+    return allRecords.filter(r => {
+      const hireYear = getHireYear(r.yearsAtCompany);
+      return hireYear >= startYear && hireYear <= endYear;
+    });
+  }, [allRecords, enableComparison, comparisonMode, dateRangeA]);
 
   const recordsB = useMemo(() => {
-    if (!enableComparison) return allRecords;
-    if (comparisonMode === 'date') {
-      const startYear = new Date(dateRangeB.start).getFullYear();
-      const endYear = new Date(dateRangeB.end).getFullYear();
-      return allRecords.filter(r => {
-        const hireYear = getHireYear(r.yearsAtCompany);
-        return hireYear >= startYear && hireYear <= endYear;
-      });
-    }
-    if (periodBFilter === 'All') return allRecords;
-    return allRecords.filter(r => r.department === periodBFilter);
-  }, [allRecords, enableComparison, comparisonMode, periodBFilter, dateRangeB]);
+    if (!enableComparison || comparisonMode !== 'date') return allRecords;
+    const startYear = new Date(dateRangeB.start).getFullYear();
+    const endYear = new Date(dateRangeB.end).getFullYear();
+    return allRecords.filter(r => {
+      const hireYear = getHireYear(r.yearsAtCompany);
+      return hireYear >= startYear && hireYear <= endYear;
+    });
+  }, [allRecords, enableComparison, comparisonMode, dateRangeB]);
 
   const kpisA = useMemo(() => calculateOverallKPIs(recordsA), [recordsA]);
   const kpisB = useMemo(() => calculateOverallKPIs(recordsB), [recordsB]);
@@ -153,14 +173,18 @@ export default function ReportBuilder() {
       dataSource: dataSourceMode,
       enableComparison,
       comparisonMode: enableComparison ? comparisonMode : undefined,
-      periodALabel: enableComparison ? periodALabel : undefined,
-      periodBLabel: enableComparison ? periodBLabel : undefined,
+      // Cohort mode: multi-group
+      comparisonGroups: enableComparison && comparisonMode === 'cohort' ? comparisonGroups : undefined,
+      selectedDepartments: enableComparison && comparisonMode === 'cohort' ? selectedDepartments : undefined,
+      // Date mode: A/B periods
+      periodALabel: enableComparison && comparisonMode === 'date' ? periodALabel : undefined,
+      periodBLabel: enableComparison && comparisonMode === 'date' ? periodBLabel : undefined,
       dateRangeA: enableComparison && comparisonMode === 'date' ? dateRangeA : undefined,
       dateRangeB: enableComparison && comparisonMode === 'date' ? dateRangeB : undefined,
-      kpisA: enableComparison ? kpisA : undefined,
-      kpisB: enableComparison ? kpisB : undefined,
-      recordsA: enableComparison ? recordsA : undefined,
-      recordsB: enableComparison ? recordsB : undefined,
+      kpisA: enableComparison && comparisonMode === 'date' ? kpisA : undefined,
+      kpisB: enableComparison && comparisonMode === 'date' ? kpisB : undefined,
+      recordsA: enableComparison && comparisonMode === 'date' ? recordsA : undefined,
+      recordsB: enableComparison && comparisonMode === 'date' ? recordsB : undefined,
       empiricalInsights,
     };
 
@@ -340,48 +364,47 @@ export default function ReportBuilder() {
                   </div>
 
                   {comparisonMode === 'cohort' ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
-                        <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Primary Segment (Group A)</label>
-                        <input
-                          type="text"
-                          value={periodALabel}
-                          onChange={(e) => setPeriodALabel(e.target.value)}
-                          placeholder="Label e.g. Sales Dept"
-                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs"
-                        />
-                        <select
-                          value={periodAFilter}
-                          onChange={(e) => setPeriodAFilter(e.target.value as any)}
-                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs font-semibold"
+                    <div className="space-y-2.5 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-navy-900 dark:text-slate-200 text-[11px]">
+                          Select Departments to Compare ({selectedDepartments.length} selected)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={selectAllDepartments}
+                          className="text-[10px] font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400"
                         >
-                          <option value="All">All Departments</option>
-                          <option value="Sales">Sales</option>
-                          <option value="Research & Development">Research & Development</option>
-                          <option value="Human Resources">Human Resources</option>
-                        </select>
+                          Select All
+                        </button>
                       </div>
-
-                      <div className="space-y-2 bg-white dark:bg-slate-900 p-3 rounded-lg border border-navy-200 dark:border-slate-800">
-                        <label className="font-bold text-navy-900 dark:text-slate-200 block text-[11px]">Comparison Segment (Group B)</label>
-                        <input
-                          type="text"
-                          value={periodBLabel}
-                          onChange={(e) => setPeriodBLabel(e.target.value)}
-                          placeholder="Label e.g. R&D Dept"
-                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs"
-                        />
-                        <select
-                          value={periodBFilter}
-                          onChange={(e) => setPeriodBFilter(e.target.value as any)}
-                          className="w-full px-2.5 py-1.5 border border-navy-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded text-xs font-semibold"
-                        >
-                          <option value="All">All Departments</option>
-                          <option value="Sales">Sales</option>
-                          <option value="Research & Development">Research & Development</option>
-                          <option value="Human Resources">Human Resources</option>
-                        </select>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {ALL_DEPARTMENTS.map((dept) => {
+                          const isChecked = selectedDepartments.includes(dept);
+                          const deptRecords = allRecords.filter(r => r.department === dept);
+                          const shortLabel = dept === 'Research & Development' ? 'R&D' : dept === 'Human Resources' ? 'HR' : dept;
+                          return (
+                            <button
+                              type="button"
+                              key={dept}
+                              onClick={() => toggleDepartment(dept)}
+                              className={`p-2.5 rounded-lg border text-left transition-all ${
+                                isChecked
+                                  ? 'bg-brand-50 dark:bg-slate-800 border-brand-300 dark:border-brand-500 ring-1 ring-brand-200'
+                                  : 'border-navy-200 dark:border-slate-700 text-navy-500 dark:text-slate-400 hover:bg-navy-50 dark:hover:bg-slate-800'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className={`text-xs font-bold ${isChecked ? 'text-brand-900 dark:text-white' : 'text-navy-600 dark:text-slate-400'}`}>
+                                  {shortLabel}
+                                </span>
+                                {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0" />}
+                              </div>
+                              <div className="text-[10px] text-navy-400 font-medium">{deptRecords.length} employees</div>
+                            </button>
+                          );
+                        })}
                       </div>
+                      <p className="text-[9px] text-navy-400">Minimum 2 departments required for comparison. Charts will filter to show only selected departments.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
