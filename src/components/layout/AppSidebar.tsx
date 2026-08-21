@@ -24,6 +24,8 @@ import {
   Building2,
   FolderKanban,
   FileCheck2,
+  CheckSquare,
+  AlertOctagon,
 } from 'lucide-react';
 
 export default function AppSidebar() {
@@ -63,8 +65,11 @@ export default function AppSidebar() {
     { id: 'overview', label: 'QMS Overview', icon: ShieldCheck },
     { id: 'document-control', label: 'Document Control', icon: FileText },
     { id: 'policies', label: 'Quality Policies', icon: FileCheck2 },
-    { id: 'sops', label: 'Standard Operating Procedures', icon: FileText },
+    { id: 'sops', label: 'SOPs', icon: FileText },
+    { id: 'work-instructions', label: 'Work Instructions', icon: CheckSquare },
     { id: 'audits', label: 'Internal Audits', icon: History },
+    { id: 'non-conformances', label: 'Non-Conformances', icon: AlertOctagon },
+    { id: 'capa', label: 'CAPA Workflow', icon: CheckSquare },
   ];
 
   return (
@@ -73,13 +78,14 @@ export default function AppSidebar() {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={`
-          fixed left-4 top-[5.2rem] bottom-4
+          fixed left-4 top-1/2 -translate-y-1/2
           flex flex-col
           rounded-2xl border border-white/10
           shadow-2xl
           transition-all duration-300 ease-in-out
           overflow-hidden
           z-50
+          max-h-[calc(100vh-2rem)]
           ${isHovered ? 'w-64' : 'w-14'}
         `}
         style={{ backgroundColor: '#0f172a' }}

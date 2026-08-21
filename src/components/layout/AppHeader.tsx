@@ -109,9 +109,9 @@ export default function AppHeader() {
                 onClick={() => setIsRoleDropdownOpen((v) => !v)}
                 className="flex items-center gap-1.5 px-3 py-1 rounded-xl border border-brand-200 dark:border-brand-800 bg-brand-50/60 dark:bg-brand-950/40 text-brand-900 dark:text-brand-300 hover:bg-brand-100/60 text-xs font-bold transition-all"
               >
-                <UserCheck className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
-                <span className="hidden md:inline">{userRole}</span>
-                <ChevronDown className="w-3 h-3 text-brand-500" />
+                <UserCheck className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0" />
+                <span className="font-bold">{userRole}</span>
+                <ChevronDown className="w-3 h-3 text-brand-500 shrink-0" />
               </button>
 
               {isRoleDropdownOpen && (
