@@ -7,7 +7,7 @@ import { BaseModal } from '@/components/common/QmsModals';
 import { Copy, Plus } from 'lucide-react';
 
 export default function TemplateLibrary() {
-  const { templates, logAuditAction } = useHR();
+  const { templates, createDocument, setActiveModule, logAuditAction } = useHR();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('HR Form');
@@ -117,7 +117,22 @@ export default function TemplateLibrary() {
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
               <span>Owner: {tpl.owner}</span>
               <button
-                onClick={() => alert(`Creating new draft document using "${tpl.name}"`)}
+                onClick={() => {
+                  createDocument({
+                    docNumber: `QMS-TPL-00${Math.floor(Math.random() * 90) + 10}`,
+                    title: `Draft: ${tpl.name}`,
+                    docType: tpl.category === 'QMS SOP' ? 'SOP' : tpl.category === 'Quality Policy' ? 'Policy' : 'Form',
+                    department: 'Quality Management',
+                    ownerName: tpl.owner,
+                    description: `New draft generated from template: ${tpl.name}`,
+                    ownerId: 'emp-curr',
+                    status: 'Draft',
+                    currentVersion: '1.0',
+                    effectiveDate: new Date().toISOString().split('T')[0],
+                    reviewDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                  });
+                  setActiveModule('documents');
+                }}
                 className="px-3 py-1.5 rounded-xl bg-navy-900 hover:bg-navy-800 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs"
               >
                 <Copy className="w-3.5 h-3.5" />
