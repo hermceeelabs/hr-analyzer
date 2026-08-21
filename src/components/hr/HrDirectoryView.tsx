@@ -3,7 +3,8 @@
 import React, { useState, useMemo } from 'react';
 import { useHR } from '@/lib/store/useHRStore';
 import { EmployeeProfile } from '@/types/qms';
-import { Search, Filter, User, Mail, Phone, Calendar, Briefcase, ChevronRight, X, FileText, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { PageHeader } from '@/components/common/PortalUiComponents';
+import { Search, ChevronRight, X, Mail, Phone } from 'lucide-react';
 
 export default function HrDirectoryView() {
   const { employeeDirectory } = useHR();
@@ -33,17 +34,15 @@ export default function HrDirectoryView() {
   return (
     <div className="space-y-6">
       {/* Directory Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-navy-950 dark:text-white">Corporate Employee Directory</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Centralized workforce profiles, organizational hierarchy, training records, and personnel documents.
-          </p>
-        </div>
-        <div className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3.5 py-2 rounded-xl">
-          Showing <span className="text-navy-900 dark:text-white font-bold">{filteredDirectory.length}</span> of {employeeDirectory.length} Profiles
-        </div>
-      </div>
+      <PageHeader
+        title="Corporate Employee Directory"
+        subtitle="Centralized workforce profiles, organizational hierarchy, training records, and personnel documents."
+        badge={
+          <div className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl">
+            Showing <span className="text-navy-900 dark:text-white font-bold">{filteredDirectory.length}</span> of {employeeDirectory.length} Profiles
+          </div>
+        }
+      />
 
       {/* Filter & Search Bar */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">

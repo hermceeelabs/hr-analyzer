@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { useHR } from '@/lib/store/useHRStore';
-import { FileText, Copy, Plus } from 'lucide-react';
+import { PageHeader } from '@/components/common/PortalUiComponents';
+import { Copy, Plus } from 'lucide-react';
 
 export default function TemplateLibrary() {
   const { templates } = useHR();
@@ -10,21 +11,19 @@ export default function TemplateLibrary() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-navy-950 dark:text-white">Corporate Template Library</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Standardized company document templates for HR forms, QMS SOPs, quality policies, and audit checklists.
-          </p>
-        </div>
-        <button
-          onClick={() => alert('Demo Mode: Upload Template feature can be customized to organization specifications.')}
-          className="px-4 py-2 rounded-xl bg-brand-900 text-white font-bold text-xs flex items-center gap-2 shadow-sm shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Upload Template</span>
-        </button>
-      </div>
+      <PageHeader
+        title="Corporate Template Library"
+        subtitle="Standardized company document templates for HR forms, QMS SOPs, quality policies, and audit checklists."
+        action={
+          <button
+            onClick={() => alert('Demo Mode: Upload Template feature can be customized to organization specifications.')}
+            className="px-4 py-2 rounded-xl bg-brand-900 text-white font-bold text-xs flex items-center gap-2 shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Upload Template</span>
+          </button>
+        }
+      />
 
       {/* Templates Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

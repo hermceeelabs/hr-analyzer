@@ -3,6 +3,7 @@
 import React from 'react';
 import { useHR } from '@/lib/store/useHRStore';
 import { QmsSubTab } from '@/types/qms';
+import { DocumentStatusBadge } from '@/components/common/PortalUiComponents';
 import {
   ShieldCheck,
   FileCheck2,
@@ -280,17 +281,7 @@ export default function QmsOverviewView() {
 
               <div className="flex items-center gap-3">
                 <span className="font-mono text-xs font-bold text-slate-600 dark:text-slate-300">v{doc.currentVersion}</span>
-                <span
-                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                    doc.status === 'Active'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : doc.status === 'Under Review'
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : 'bg-rose-50 text-rose-700 border-rose-200'
-                  }`}
-                >
-                  {doc.status}
-                </span>
+                <DocumentStatusBadge status={doc.status} />
               </div>
             </div>
           ))}

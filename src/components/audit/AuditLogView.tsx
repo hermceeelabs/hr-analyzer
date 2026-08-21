@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { useHR } from '@/lib/store/useHRStore';
-import { PortalModule } from '@/types/qms';
-import { ShieldCheck, Search, Filter, Clock, UserCheck, FileText } from 'lucide-react';
+import { PageHeader } from '@/components/common/PortalUiComponents';
+import { Search } from 'lucide-react';
 
 export default function AuditLogView() {
   const { auditLogs } = useHR();
@@ -26,17 +26,15 @@ export default function AuditLogView() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div>
-          <h1 className="text-xl font-bold text-navy-950 dark:text-white">System Audit &amp; Compliance Log</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Immutable, audit-ready stream of user activities, document status changes, approvals, and employee record updates.
-          </p>
-        </div>
-        <div className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3.5 py-2 rounded-xl">
-          {filteredLogs.length} Total Audit Records
-        </div>
-      </div>
+      <PageHeader
+        title="System Audit & Compliance Log"
+        subtitle="Immutable, audit-ready stream of user activities, document status changes, approvals, and employee record updates."
+        badge={
+          <div className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl">
+            {filteredLogs.length} Total Audit Records
+          </div>
+        }
+      />
 
       {/* Filters */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">

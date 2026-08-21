@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useHR } from '@/lib/store/useHRStore';
 import { DocumentStatus } from '@/types/qms';
+import { DocumentStatusBadge } from '@/components/common/PortalUiComponents';
 import {
   ArrowLeft,
   FileText,
@@ -78,19 +79,7 @@ export default function DocumentDetailView() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                doc.status === 'Active'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : doc.status === 'Under Review'
-                  ? 'bg-amber-50 text-amber-700 border-amber-200'
-                  : doc.status === 'Changes Requested'
-                  ? 'bg-rose-50 text-rose-700 border-rose-200'
-                  : 'bg-slate-100 text-slate-600 border-slate-200'
-              }`}
-            >
-              {doc.status}
-            </span>
+            <DocumentStatusBadge status={doc.status} />
             <span className="font-mono font-bold text-xs bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full text-slate-700 dark:text-slate-300">
               v{doc.currentVersion}
             </span>
