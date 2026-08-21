@@ -4,15 +4,17 @@ import React, { useState, useMemo } from 'react';
 import { useHR } from '@/lib/store/useHRStore';
 import { DocumentStatus, DocumentType } from '@/types/qms';
 import { PageHeader, DocumentStatusBadge } from '@/components/common/PortalUiComponents';
+import { NewDocumentModal } from '@/components/common/QmsModals';
 import { Search, Plus, FileText } from 'lucide-react';
 
 export default function DocumentRegister() {
-  const { qmsDocuments, setSelectedDocumentId } = useHR();
+  const { qmsDocuments, createDocument, setSelectedDocumentId } = useHR();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const departments = ['All', 'Quality Management', 'Human Resources', 'Operations', 'Information Technology'];
   const docTypes: (DocumentType | 'All')[] = ['All', 'Policy', 'SOP', 'Work Instruction', 'Procedure', 'Handbook', 'Form'];
@@ -41,13 +43,28 @@ export default function DocumentRegister() {
         subtitle="Master repository of controlled policies, standard operating procedures, work instructions, and company records."
         action={
           <button
-            onClick={() => alert('Demo Mode: New Document Wizard can be configured around company workflow requirements.')}
+            onClick={() => setIsCreateModalOpen(true)}
             className="px-4 py-2 rounded-xl bg-brand-900 hover:bg-brand-800 dark:bg-brand-600 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>New Document</span>
           </button>
         }
+      />
+
+      <NewDocumentModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={(data) => {
+          createDocument({
+            ...data,
+            ownerId: 'emp-curr',
+            status: 'Draft',
+            currentVersion: '1.0',
+            effectiveDate: new Date().toISOString().split('T')[0],
+            reviewDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          });
+        }}
       />
 
       {/* Multi-Parameter Filter Bar */}

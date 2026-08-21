@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useHR } from '@/lib/store/useHRStore';
-import { QmsSubTab } from '@/types/qms';
+import { QmsSubTab, AuditRecord, NonConformanceRecord, CapaRecord } from '@/types/qms';
 import { DocumentStatusBadge } from '@/components/common/PortalUiComponents';
+import { ScheduleAuditModal, LogNonConformanceModal, IssueCapaModal } from '@/components/common/QmsModals';
 import {
   ShieldCheck,
   FileCheck2,
@@ -20,22 +21,100 @@ import {
 } from 'lucide-react';
 
 export default function QmsOverviewView() {
-  const { qmsDocuments, activeQmsSubTab, setActiveModule, setSelectedDocumentId } = useHR();
+  const { qmsDocuments, activeQmsSubTab, setActiveModule, setSelectedDocumentId, logAuditAction } = useHR();
+
+  const [audits, setAudits] = useState<AuditRecord[]>([
+    {
+      id: 'aud-1',
+      auditNumber: 'AUD-2026-001',
+      title: 'ISO 9001 Annual Recertification Audit',
+      auditType: 'External Recertification',
+      department: 'Quality Management',
+      auditorName: 'Michael Chang',
+      scheduledDate: '2026-10-14',
+      status: 'Scheduled',
+      findingsCount: 0,
+    },
+    {
+      id: 'aud-2',
+      auditNumber: 'AUD-2026-002',
+      title: 'Q2 Document Versioning & Archival Audit',
+      auditType: 'Document Control',
+      department: 'Quality Management',
+      auditorName: 'Sarah Jenkins',
+      scheduledDate: '2026-06-20',
+      status: 'Completed',
+      findingsCount: 0,
+    },
+    {
+      id: 'aud-3',
+      auditNumber: 'AUD-2026-003',
+      title: 'Key IT Hardware Supplier Audit',
+      auditType: 'Supplier Quality',
+      department: 'Information Technology',
+      auditorName: 'Alexander Hayes',
+      scheduledDate: '2026-08-18',
+      status: 'In Progress',
+      findingsCount: 1,
+    },
+  ]);
+
+  const [nonConformances, setNonConformances] = useState<NonConformanceRecord[]>([
+    {
+      id: 'nc-1',
+      ncNumber: 'NC-2026-004',
+      title: 'Delayed Safety Equipment Training Sign-off',
+      department: 'Operations',
+      severity: 'Minor',
+      loggedBy: 'David O\'Connor',
+      loggedDate: '2026-08-10',
+      description: 'Quarterly HSE safety training completion fell below the 95% threshold for plant staff.',
+      status: 'CAPA Pending',
+    },
+    {
+      id: 'nc-2',
+      ncNumber: 'NC-2026-003',
+      title: 'Document Control Version Tag Discrepancy',
+      department: 'Quality Management',
+      severity: 'Low',
+      loggedBy: 'Sarah Jenkins',
+      loggedDate: '2026-07-28',
+      description: 'Minor header version number misalignment resolved during internal review.',
+      status: 'Resolved',
+    },
+  ]);
+
+  const [capas, setCapas] = useState<CapaRecord[]>([
+    {
+      id: 'capa-1',
+      capaNumber: 'CAPA-012',
+      title: 'Automated System Access Deprovisioning Enforcement',
+      rootCause: 'Manual handoff between HR exit workflow and IT access revoking.',
+      correctiveAction: 'Automated Supabase database trigger integrated with employee termination status.',
+      assignedTo: 'Marcus Vance',
+      dueDate: '2026-09-30',
+      status: 'Verification Pending',
+    },
+  ]);
+
+  // Modal Visibility States
+  const [isScheduleAuditModalOpen, setIsScheduleAuditModalOpen] = useState(false);
+  const [isLogNcModalOpen, setIsLogNcModalOpen] = useState(false);
+  const [isIssueCapaModalOpen, setIsIssueCapaModalOpen] = useState(false);
 
   const total = qmsDocuments.length;
   const active = qmsDocuments.filter((d) => d.status === 'Active').length;
   const underReview = qmsDocuments.filter((d) => d.status === 'Under Review').length;
   const changesReq = qmsDocuments.filter((d) => d.status === 'Changes Requested').length;
 
-  // Filter documents based on active QMS subtab
   const displayedDocs = qmsDocuments.filter((doc) => {
     if (activeQmsSubTab === 'policies') return doc.docType === 'Policy' || doc.docType === 'Handbook';
     if (activeQmsSubTab === 'sops') return doc.docType === 'SOP' || doc.docType === 'Procedure';
     if (activeQmsSubTab === 'work-instructions') return doc.docType === 'Work Instruction';
-    return true; // overview or document-control shows all
+    return true;
   });
 
-  // Render specific subtab content for Audits, Non-Conformances, and CAPA
+  // Audits Subpage View
   if (activeQmsSubTab === 'audits') {
     return (
       <div className="space-y-6">
@@ -47,7 +126,7 @@ export default function QmsOverviewView() {
             </p>
           </div>
           <button
-            onClick={() => alert('Demo Mode: Schedule Audit wizard can be configured to client specifications.')}
+            onClick={() => setIsScheduleAuditModalOpen(true)}
             className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-2 shadow-xs shrink-0"
           >
             <Plus className="w-4 h-4" />
@@ -55,47 +134,51 @@ export default function QmsOverviewView() {
           </button>
         </div>
 
+        <ScheduleAuditModal
+          isOpen={isScheduleAuditModalOpen}
+          onClose={() => setIsScheduleAuditModalOpen(false)}
+          onSubmit={(data) => {
+            const newAudit: AuditRecord = {
+              ...data,
+              id: `aud-${Date.now()}`,
+              status: 'Scheduled',
+              findingsCount: 0,
+            };
+            setAudits([newAudit, ...audits]);
+            logAuditAction(`Scheduled ${data.auditType} (${data.auditNumber})`, 'qms', data.title);
+          }}
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase">Q3 Internal Audit</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">Scheduled</span>
+          {audits.map((aud) => (
+            <div key={aud.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold text-slate-500">{aud.auditNumber}</span>
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    aud.status === 'Completed'
+                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                      : aud.status === 'In Progress'
+                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  }`}
+                >
+                  {aud.status}
+                </span>
+              </div>
+              <div className="text-sm font-bold text-navy-950 dark:text-white">{aud.title}</div>
+              <div className="text-xs text-slate-500 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                <span>Auditor: {aud.auditorName}</span>
+                <span className="font-mono">{aud.scheduledDate}</span>
+              </div>
             </div>
-            <div className="text-sm font-bold text-navy-950 dark:text-white">ISO 9001 Annual Recertification Audit</div>
-            <div className="text-xs text-slate-500 flex items-center gap-2 pt-1">
-              <Calendar className="w-3.5 h-3.5 text-slate-400" />
-              <span>Oct 14 - Oct 16, 2026</span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase">Document Control Audit</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700">Completed</span>
-            </div>
-            <div className="text-sm font-bold text-navy-950 dark:text-white">Q2 Document Versioning &amp; Archival Audit</div>
-            <div className="text-xs text-slate-500 flex items-center gap-2 pt-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              <span>0 Major Non-Conformances</span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase">Supplier Quality Audit</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700">In Progress</span>
-            </div>
-            <div className="text-sm font-bold text-navy-950 dark:text-white">Key IT Hardware Supplier Audit</div>
-            <div className="text-xs text-slate-500 flex items-center gap-2 pt-1">
-              <Clock className="w-3.5 h-3.5 text-amber-500" />
-              <span>Reviewing SLA Attachments</span>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     );
   }
 
+  // Non-Conformances Subpage View
   if (activeQmsSubTab === 'non-conformances') {
     return (
       <div className="space-y-6">
@@ -107,7 +190,7 @@ export default function QmsOverviewView() {
             </p>
           </div>
           <button
-            onClick={() => alert('Demo Mode: Log Non-Conformance modal can be connected to custom workflow form.')}
+            onClick={() => setIsLogNcModalOpen(true)}
             className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-2 shadow-xs shrink-0"
           >
             <Plus className="w-4 h-4" />
@@ -115,44 +198,60 @@ export default function QmsOverviewView() {
           </button>
         </div>
 
+        <LogNonConformanceModal
+          isOpen={isLogNcModalOpen}
+          onClose={() => setIsLogNcModalOpen(false)}
+          onSubmit={(data) => {
+            const newNc: NonConformanceRecord = {
+              ...data,
+              id: `nc-${Date.now()}`,
+              loggedBy: 'Current User',
+              loggedDate: new Date().toISOString().split('T')[0],
+              status: 'Open',
+            };
+            setNonConformances([newNc, ...nonConformances]);
+            logAuditAction(`Logged Non-Conformance ${data.ncNumber}`, 'qms', data.title, `Severity: ${data.severity}`);
+          }}
+        />
+
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
             <h2 className="text-base font-bold text-navy-950 dark:text-white">Logged Quality Non-Conformances</h2>
-            <span className="text-xs font-semibold text-slate-500">1 Open • 2 Resolved</span>
+            <span className="text-xs font-semibold text-slate-500">{nonConformances.length} Incidents</span>
           </div>
 
           <div className="space-y-3">
-            <div className="p-4 rounded-xl border border-rose-100 dark:border-slate-800 bg-rose-50/40 dark:bg-slate-800/40 flex items-center justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold text-rose-600">NC-2026-004</span>
-                  <span className="text-xs font-bold text-navy-950 dark:text-white">Delayed Safety Equipment Training Sign-off</span>
+            {nonConformances.map((nc) => (
+              <div key={nc.id} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40 flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-rose-600">{nc.ncNumber}</span>
+                    <span className="text-xs font-bold text-navy-950 dark:text-white">{nc.title}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Dept: {nc.department} • Severity: <strong className="text-rose-600">{nc.severity}</strong> • Logged: {nc.loggedDate}
+                  </div>
                 </div>
-                <div className="text-[11px] text-slate-500">Department: Operations • Severity: Minor • Logged: Aug 10, 2026</div>
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                    nc.status === 'Resolved'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : nc.status === 'CAPA Pending'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                  }`}
+                >
+                  {nc.status}
+                </span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                CAPA Pending
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/40 flex items-center justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold text-slate-500">NC-2026-003</span>
-                  <span className="text-xs font-bold text-navy-950 dark:text-white">Document Control Version Tag Discrepancy</span>
-                </div>
-                <div className="text-[11px] text-slate-500">Department: Quality Management • Severity: Low • Resolved: Jul 28, 2026</div>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                Resolved
-              </span>
-            </div>
+            ))}
           </div>
         </div>
       </div>
     );
   }
 
+  // CAPA Subpage View
   if (activeQmsSubTab === 'capa') {
     return (
       <div className="space-y-6">
@@ -164,7 +263,7 @@ export default function QmsOverviewView() {
             </p>
           </div>
           <button
-            onClick={() => alert('Demo Mode: Issue CAPA wizard can be linked to incident logging.')}
+            onClick={() => setIsIssueCapaModalOpen(true)}
             className="px-4 py-2 rounded-xl bg-brand-900 text-white font-bold text-xs flex items-center gap-2 shadow-xs shrink-0"
           >
             <Plus className="w-4 h-4" />
@@ -172,17 +271,38 @@ export default function QmsOverviewView() {
           </button>
         </div>
 
+        <IssueCapaModal
+          isOpen={isIssueCapaModalOpen}
+          onClose={() => setIsIssueCapaModalOpen(false)}
+          onSubmit={(data) => {
+            const newCapa: CapaRecord = {
+              ...data,
+              id: `capa-${Date.now()}`,
+              status: 'Open',
+            };
+            setCapas([newCapa, ...capas]);
+            logAuditAction(`Issued Corrective Action ${data.capaNumber}`, 'qms', data.title, `Assigned to: ${data.assignedTo}`);
+          }}
+        />
+
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
-          <div className="p-4 rounded-xl border border-brand-200 dark:border-slate-800 bg-brand-50/40 dark:bg-slate-800/40 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-xs font-bold text-brand-600">CAPA-012</span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">Verification Pending</span>
+          {capas.map((c) => (
+            <div key={c.id} className="p-4 rounded-xl border border-brand-200 dark:border-slate-800 bg-brand-50/40 dark:bg-slate-800/40 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold text-brand-600">{c.capaNumber}</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">{c.status}</span>
+              </div>
+              <h3 className="text-xs font-bold text-navy-950 dark:text-white">{c.title}</h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                <strong>Root Cause:</strong> {c.rootCause} <br />
+                <strong>Corrective Plan:</strong> {c.correctiveAction}
+              </p>
+              <div className="text-[11px] text-slate-500 pt-1 flex items-center justify-between">
+                <span>Assigned: {c.assignedTo}</span>
+                <span>Due Date: {c.dueDate}</span>
+              </div>
             </div>
-            <h3 className="text-xs font-bold text-navy-950 dark:text-white">Automated System Access Deprovisioning Enforcement</h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Root Cause: Manual handoff between HR exit workflow and IT access revoking. Corrective Action: Automated Supabase trigger integrated with employee termination status.
-            </p>
-          </div>
+          ))}
         </div>
       </div>
     );

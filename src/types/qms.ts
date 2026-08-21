@@ -146,6 +146,41 @@ export interface AuditLogEntry {
   details?: string;
 }
 
+export interface AuditRecord {
+  id: string;
+  auditNumber: string; // e.g., "AUD-2026-004"
+  title: string;
+  auditType: 'ISO 9001 Internal' | 'External Recertification' | 'Supplier Quality' | 'Document Control';
+  department: string;
+  auditorName: string;
+  scheduledDate: string;
+  status: 'Scheduled' | 'In Progress' | 'Completed';
+  findingsCount: number;
+}
+
+export interface NonConformanceRecord {
+  id: string;
+  ncNumber: string; // e.g., "NC-2026-005"
+  title: string;
+  department: string;
+  severity: 'Low' | 'Minor' | 'Major' | 'Critical';
+  loggedBy: string;
+  loggedDate: string;
+  description: string;
+  status: 'Open' | 'CAPA Pending' | 'Resolved';
+}
+
+export interface CapaRecord {
+  id: string;
+  capaNumber: string; // e.g., "CAPA-013"
+  title: string;
+  rootCause: string;
+  correctiveAction: string;
+  assignedTo: string;
+  dueDate: string;
+  status: 'Open' | 'Verification Pending' | 'Closed';
+}
+
 export interface EmployeeProfile {
   id: string;
   empId: string; // e.g., "EMP-0142"
@@ -164,3 +199,4 @@ export interface EmployeeProfile {
   leaveBalanceDays: number;
   performanceRating: number;
 }
+

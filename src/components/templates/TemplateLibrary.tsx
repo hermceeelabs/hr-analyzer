@@ -1,12 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useHR } from '@/lib/store/useHRStore';
 import { PageHeader } from '@/components/common/PortalUiComponents';
+import { BaseModal } from '@/components/common/QmsModals';
 import { Copy, Plus } from 'lucide-react';
 
 export default function TemplateLibrary() {
-  const { templates } = useHR();
+  const { templates, logAuditAction } = useHR();
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState('HR Form');
 
   return (
     <div className="space-y-6">
@@ -16,7 +20,7 @@ export default function TemplateLibrary() {
         subtitle="Standardized company document templates for HR forms, QMS SOPs, quality policies, and audit checklists."
         action={
           <button
-            onClick={() => alert('Demo Mode: Upload Template feature can be customized to organization specifications.')}
+            onClick={() => setIsUploadModalOpen(true)}
             className="px-4 py-2 rounded-xl bg-brand-900 text-white font-bold text-xs flex items-center gap-2 shadow-sm"
           >
             <Plus className="w-4 h-4" />
@@ -24,6 +28,73 @@ export default function TemplateLibrary() {
           </button>
         }
       />
+
+      <BaseModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        title="Upload Corporate Document Template"
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!title) return;
+            logAuditAction('Uploaded Template', 'templates', title, `Category: ${category}`);
+            setIsUploadModalOpen(false);
+            setTitle('');
+          }}
+          className="space-y-3 text-xs"
+        >
+          <div>
+            <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Template Name</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Employee Exit Knowledge Transfer Form"
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl dark:bg-slate-800 dark:text-white font-bold"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Category</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl dark:bg-slate-800 dark:text-white font-semibold"
+            >
+              <option value="HR Form">HR Form</option>
+              <option value="QMS SOP">QMS SOP</option>
+              <option value="Quality Policy">Quality Policy</option>
+              <option value="Audit Checklist">Audit Checklist</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Select File (.docx, .pdf, Google Docs)</label>
+            <input
+              type="file"
+              className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsUploadModalOpen(false)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-xl bg-brand-900 text-white font-bold text-xs shadow-xs"
+            >
+              Upload &amp; Register Template
+            </button>
+          </div>
+        </form>
+      </BaseModal>
 
       {/* Templates Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
