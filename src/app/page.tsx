@@ -12,15 +12,27 @@ import SatisfactionTab from '@/components/dashboard/SatisfactionTab';
 import PerformanceTab from '@/components/dashboard/PerformanceTab';
 import CareerTab from '@/components/dashboard/CareerTab';
 import DemographicsTab from '@/components/dashboard/DemographicsTab';
-import EmployeeTable from '@/components/employees/EmployeeTable';
 import DataQualityView from '@/components/quality/DataQualityView';
 import ReportBuilder from '@/components/reports/ReportBuilder';
+
+// Portal Module Views
+import ExecutiveDashboard from '@/components/dashboard/ExecutiveDashboard';
+import HrDirectoryView from '@/components/hr/HrDirectoryView';
+import QmsOverviewView from '@/components/qms/QmsOverviewView';
+import DocumentRegister from '@/components/documents/DocumentRegister';
+import DocumentDetailView from '@/components/documents/DocumentDetailView';
+import ApprovalsView from '@/components/approvals/ApprovalsView';
+import TemplateLibrary from '@/components/templates/TemplateLibrary';
+import AuditLogView from '@/components/audit/AuditLogView';
+
 import { AlertTriangle, RefreshCw, Terminal } from 'lucide-react';
 
-export default function HRAnalyticsApp() {
+export default function BusinessOperationsPortal() {
   const {
-    activeTab,
-    activeAnalyticsSubTab,
+    activeModule,
+    activeHrSubTab,
+    activeQmsSubTab,
+    selectedDocumentId,
     isLoading,
     dbError,
     isRlsBlocked,
@@ -28,8 +40,9 @@ export default function HRAnalyticsApp() {
     refetchDemoData,
   } = useHR();
 
-  const renderDashboardModule = () => {
-    switch (activeAnalyticsSubTab) {
+  // Render HR Analytics Sub-Tabs (preserves 100% of existing visualizations & computations)
+  const renderHrAnalyticsModule = () => {
+    switch (activeHrSubTab) {
       case 'attrition':
         return <AttritionTab />;
       case 'compensation':
@@ -48,38 +61,90 @@ export default function HRAnalyticsApp() {
     }
   };
 
-  const renderActiveMainTab = () => {
-    switch (activeTab) {
-      case 'employees':
-        return <EmployeeTable />;
+  // Render HR Module
+  const renderHrModule = () => {
+    switch (activeHrSubTab) {
+      case 'directory':
+        return <HrDirectoryView />;
+      case 'departments':
+      case 'onboarding':
+      case 'training':
+      case 'documents':
+        return (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-3">
+            <h2 className="text-lg font-bold text-navy-950 dark:text-white capitalize">HR {activeHrSubTab} Section</h2>
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              This demonstration section communicates how full personnel management, workflow onboarding checklists, and training records connect to the central dataset.
+            </p>
+          </div>
+        );
+      case 'analytics':
+      default:
+        return (
+          <div className="space-y-4">
+            <FilterPanel />
+            {renderHrAnalyticsModule()}
+          </div>
+        );
+    }
+  };
+
+  // Render QMS Module
+  const renderQmsModule = () => {
+    switch (activeQmsSubTab) {
+      case 'document-control':
+      case 'policies':
+      case 'sops':
+      case 'work-instructions':
+      case 'audits':
+      case 'non-conformances':
+      case 'capa':
+        return <QmsOverviewView />;
+      case 'overview':
+      default:
+        return <QmsOverviewView />;
+    }
+  };
+
+  // Render Main Active Portal Module
+  const renderActivePortalModule = () => {
+    switch (activeModule) {
+      case 'hr':
+        return renderHrModule();
+      case 'qms':
+        return renderQmsModule();
+      case 'documents':
+        return selectedDocumentId ? <DocumentDetailView /> : <DocumentRegister />;
+      case 'approvals':
+        return <ApprovalsView />;
+      case 'templates':
+        return <TemplateLibrary />;
       case 'reports':
         return <ReportBuilder />;
-      case 'quality':
+      case 'audit':
+        return <AuditLogView />;
+      case 'settings':
         return <DataQualityView />;
       case 'dashboard':
       default:
-        return renderDashboardModule();
+        return <ExecutiveDashboard />;
     }
   };
 
   return (
-    /* Full-viewport shell — sidebar fixed on left, right column scrolls */
     <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-[#0c111d] font-sans transition-colors duration-200">
-
-      {/* ── Fixed sidebar — full viewport height, never scrolls ── */}
+      {/* Fixed Portal Sidebar */}
       <AppSidebar />
 
-      {/* ── Right column: header pinned at top, content scrolls below ── */}
+      {/* Right Column: Sticky Header + Scrollable Content */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-
-        {/* Sticky header — scoped to the right column only */}
         <AppHeader />
 
-        {/* Scrollable content area */}
+        {/* Scrollable Content Area */}
         <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-[#0c111d] transition-colors duration-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
 
-            {/* Database Connection Error */}
+            {/* Supabase Connection Alert */}
             {!isLoading && dbError && dataSourceMode === 'demo' && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 shadow-xs text-amber-950 space-y-4">
                 <div className="flex items-start gap-3">
@@ -101,7 +166,7 @@ export default function HRAnalyticsApp() {
               </div>
             )}
 
-            {/* RLS Policy Guidance Notice */}
+            {/* RLS Policy Notice */}
             {!isLoading && !dbError && isRlsBlocked && dataSourceMode === 'demo' && (
               <div className="bg-amber-50/80 border border-amber-300 rounded-xl p-6 shadow-xs text-amber-950 space-y-4">
                 <div className="flex items-start gap-3">
@@ -145,9 +210,8 @@ USING (true);`}
               </div>
             )}
 
-            {/* Filter Panel + Main Content — render even while loading so layout doesn't jump */}
-            {(activeTab === 'dashboard' || activeTab === 'employees') && <FilterPanel />}
-            {renderActiveMainTab()}
+            {/* Portal Module Output */}
+            {renderActivePortalModule()}
 
           </div>
         </main>

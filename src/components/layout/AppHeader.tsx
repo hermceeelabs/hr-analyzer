@@ -5,6 +5,7 @@ import { useHR } from '@/lib/store/useHRStore';
 import { useTheme, ACCENT_PRESETS } from '@/lib/theme/ThemeProvider';
 import { downloadHRTemplateCSV, downloadHRTemplateXLSX } from '@/lib/analytics/template';
 import UploadModal from '@/components/upload/UploadModal';
+import { UserRole } from '@/types/qms';
 import {
   Database,
   UploadCloud,
@@ -18,6 +19,8 @@ import {
   Sun,
   Moon,
   Palette,
+  ShieldCheck,
+  UserCheck,
 } from 'lucide-react';
 
 export default function AppHeader() {
@@ -29,21 +32,38 @@ export default function AppHeader() {
     isLoading,
     allRecords,
     filteredRecords,
+    userRole,
+    setUserRole,
   } = useHR();
 
   const { isDark, toggleDark, accentHex, setAccentHex } = useTheme();
 
-  const [isUploadModalOpen, setIsUploadModalOpen]     = useState(false);
-  const [isTemplateDropdownOpen, setIsTemplateOpen]   = useState(false);
-  const [isThemePanelOpen, setIsThemePanelOpen]       = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isTemplateDropdownOpen, setIsTemplateOpen] = useState(false);
+  const [isThemePanelOpen, setIsThemePanelOpen] = useState(false);
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+
   const themePanelRef = useRef<HTMLDivElement>(null);
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
   const colorInputRef = useRef<HTMLInputElement>(null);
 
-  // Close theme panel on outside click
+  const roles: UserRole[] = [
+    'Administrator',
+    'HR Manager',
+    'HR Officer',
+    'Quality Manager',
+    'Quality Reviewer',
+    'Employee',
+    'Auditor',
+  ];
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (themePanelRef.current && !themePanelRef.current.contains(e.target as Node)) {
         setIsThemePanelOpen(false);
+      }
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(e.target as Node)) {
+        setIsRoleDropdownOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClick);
@@ -51,43 +71,90 @@ export default function AppHeader() {
   }, []);
 
   return (
-    /*
-      Floating pill header centered over the right workspace area.
-      Uses mx-auto, rounded-2xl container inset from top and sides.
-    */
-    <header className="sticky top-3 z-30 shrink-0 mx-auto max-w-5xl w-[calc(100%-2rem)] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg transition-colors duration-200">
+    <header className="sticky top-2 z-30 shrink-0 mx-auto max-w-7xl w-[calc(100%-2rem)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg transition-colors duration-200">
+      {/* Subtitle Banner for POC Disclaimer */}
+      <div className="bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 px-4 py-1.5 rounded-t-2xl text-center border-b border-white/10 flex items-center justify-between text-[11px] text-slate-300">
+        <div className="flex items-center gap-1.5 mx-auto">
+          <span className="font-extrabold text-amber-400 uppercase tracking-widest bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/40 text-[10px]">
+            Proof of Concept — Demonstration Data
+          </span>
+          <span className="hidden md:inline text-slate-400">
+            Workflows and architecture shown are illustrative and configurable around client specifications.
+          </span>
+        </div>
+      </div>
+
       <div className="px-5 py-2.5">
         <div className="flex items-center justify-between gap-4">
 
-          {/* ── Left: title + record count ── */}
+          {/* Left: Portal Title & Record Count */}
           <div>
-            <h1 className="text-sm font-bold text-slate-900 dark:text-white leading-tight tracking-tight">
-              HR Analytics
+            <h1 className="text-sm font-bold text-navy-950 dark:text-white leading-tight tracking-tight flex items-center gap-2">
+              <span>Business Operations Portal</span>
+              <span className="text-[10px] font-semibold text-brand-600 bg-brand-50 dark:bg-brand-950/60 dark:text-brand-300 px-2 py-0.5 rounded border border-brand-200/60">
+                QMS &amp; HR
+              </span>
             </h1>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
               {isLoading ? (
                 <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  Loading data…
+                  Loading Portal Services…
                 </span>
               ) : (
                 <>
-                  Showing{' '}
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">{filteredRecords.length.toLocaleString()}</span>
-                  {' '}of{' '}
+                  Active Records:{' '}
                   <span className="font-semibold text-slate-800 dark:text-slate-200">{allRecords.length.toLocaleString()}</span>
-                  {' '}employee records
+                  {' '}employees •{' '}
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">50+</span> controlled documents
                 </>
               )}
             </p>
           </div>
 
-          {/* ── Right: controls ── */}
+          {/* Right: Controls & RBAC Role Switcher */}
           <div className="flex items-center gap-2">
+
+            {/* RBAC Role Switcher */}
+            <div className="relative" ref={roleDropdownRef}>
+              <button
+                onClick={() => setIsRoleDropdownOpen((v) => !v)}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-xl border border-brand-200 dark:border-brand-800 bg-brand-50/60 dark:bg-brand-950/40 text-brand-900 dark:text-brand-300 hover:bg-brand-100/60 text-xs font-bold transition-all"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                <span className="hidden md:inline">{userRole}</span>
+                <ChevronDown className="w-3 h-3 text-brand-500" />
+              </button>
+
+              {isRoleDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl py-1 z-50 text-xs space-y-0.5">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-700">
+                    Switch Active User Role
+                  </div>
+                  {roles.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => {
+                        setUserRole(r);
+                        setIsRoleDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-3.5 py-2 text-xs flex items-center justify-between transition-colors ${
+                        userRole === r
+                          ? 'bg-brand-50 dark:bg-slate-700/80 font-bold text-brand-900 dark:text-white'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                      }`}
+                    >
+                      <span>{r}</span>
+                      {userRole === r && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Data Source Badge */}
             <div
-              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors ${
+              className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors ${
                 dataSourceMode === 'demo'
                   ? dbError || isRlsBlocked
                     ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700'
@@ -98,11 +165,12 @@ export default function AppHeader() {
               {dataSourceMode === 'demo' ? (
                 <>
                   <Database className="w-3 h-3" />
-                  <span>Demo DB</span>
-                  {dbError || isRlsBlocked
-                    ? <AlertTriangle className="w-3 h-3 text-amber-500" />
-                    : <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                  }
+                  <span>Supabase Active</span>
+                  {dbError || isRlsBlocked ? (
+                    <AlertTriangle className="w-3 h-3 text-amber-500" />
+                  ) : (
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                  )}
                 </>
               ) : (
                 <>
@@ -112,25 +180,14 @@ export default function AppHeader() {
               )}
             </div>
 
-            {/* Return to Demo DB */}
-            {dataSourceMode === 'uploaded' && (
-              <button
-                onClick={clearUploadedData}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold transition-all"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Demo DB</span>
-              </button>
-            )}
-
             {/* Download Template */}
             <div className="relative">
               <button
-                onClick={() => setIsTemplateOpen(v => !v)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold transition-all"
+                onClick={() => setIsTemplateOpen((v) => !v)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold transition-all"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Template</span>
+                <span className="hidden sm:inline">Templates</span>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </button>
 
@@ -140,14 +197,20 @@ export default function AppHeader() {
                   onMouseLeave={() => setIsTemplateOpen(false)}
                 >
                   <button
-                    onClick={() => { downloadHRTemplateCSV(); setIsTemplateOpen(false); }}
+                    onClick={() => {
+                      downloadHRTemplateCSV();
+                      setIsTemplateOpen(false);
+                    }}
                     className="w-full text-left px-4 py-2.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center gap-2"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
                     <span>Download CSV Template</span>
                   </button>
                   <button
-                    onClick={() => { downloadHRTemplateXLSX(); setIsTemplateOpen(false); }}
+                    onClick={() => {
+                      downloadHRTemplateXLSX();
+                      setIsTemplateOpen(false);
+                    }}
                     className="w-full text-left px-4 py-2.5 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center gap-2 border-t border-slate-100 dark:border-slate-700"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-blue-500" />
@@ -160,34 +223,34 @@ export default function AppHeader() {
             {/* Upload Dataset */}
             <button
               onClick={() => setIsUploadModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-white text-xs font-semibold transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-white text-xs font-semibold transition-all shadow-sm"
               style={{ backgroundColor: accentHex }}
             >
               <UploadCloud className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Upload Dataset</span>
+              <span className="hidden sm:inline">Upload</span>
             </button>
 
-            {/* ─── Theme Panel ─────────────────────────────── */}
+            {/* Theme Panel */}
             <div className="relative" ref={themePanelRef}>
               <button
-                onClick={() => setIsThemePanelOpen(v => !v)}
+                onClick={() => setIsThemePanelOpen((v) => !v)}
                 title="Theme settings"
-                className="flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                className="flex items-center justify-center w-7 h-7 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
               >
                 <Palette className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
               </button>
 
               {isThemePanelOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-4 z-50 space-y-4">
-
-                  {/* Dark / Light toggle */}
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
                       Mode
                     </p>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => { if (isDark) toggleDark(); }}
+                        onClick={() => {
+                          if (isDark) toggleDark();
+                        }}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold border transition-all ${
                           !isDark
                             ? 'border-transparent text-white shadow'
@@ -199,7 +262,9 @@ export default function AppHeader() {
                         Light
                       </button>
                       <button
-                        onClick={() => { if (!isDark) toggleDark(); }}
+                        onClick={() => {
+                          if (!isDark) toggleDark();
+                        }}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold border transition-all ${
                           isDark
                             ? 'border-transparent text-white shadow'
@@ -213,13 +278,12 @@ export default function AppHeader() {
                     </div>
                   </div>
 
-                  {/* Accent colour presets */}
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
                       Accent Colour
                     </p>
                     <div className="grid grid-cols-5 gap-2">
-                      {ACCENT_PRESETS.map(preset => (
+                      {ACCENT_PRESETS.map((preset) => (
                         <button
                           key={preset.hex}
                           title={preset.name}
@@ -234,38 +298,11 @@ export default function AppHeader() {
                           )}
                         </button>
                       ))}
-                      {/* Custom colour picker */}
-                      <button
-                        title="Custom colour"
-                        onClick={() => colorInputRef.current?.click()}
-                        className="w-9 h-9 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center hover:border-slate-400 transition-all text-slate-400 text-[10px] font-bold"
-                      >
-                        +
-                        <input
-                          ref={colorInputRef}
-                          type="color"
-                          value={accentHex}
-                          onChange={e => setAccentHex(e.target.value)}
-                          className="sr-only"
-                        />
-                      </button>
-                    </div>
-
-                    {/* Current colour swatch */}
-                    <div className="mt-3 flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-900/60">
-                      <div
-                        className="w-6 h-6 rounded-md shadow-sm shrink-0"
-                        style={{ backgroundColor: accentHex }}
-                      />
-                      <span className="text-xs font-mono text-slate-600 dark:text-slate-300 uppercase">
-                        {accentHex}
-                      </span>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-            {/* ─────────────────────────────────────────────── */}
 
           </div>
         </div>

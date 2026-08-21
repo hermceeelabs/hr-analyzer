@@ -1,0 +1,62 @@
+'use client';
+
+import React from 'react';
+import { useHR } from '@/lib/store/useHRStore';
+import { FileText, Copy, Plus } from 'lucide-react';
+
+export default function TemplateLibrary() {
+  const { templates } = useHR();
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div>
+          <h1 className="text-xl font-bold text-navy-950 dark:text-white">Corporate Template Library</h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Standardized company document templates for HR forms, QMS SOPs, quality policies, and audit checklists.
+          </p>
+        </div>
+        <button
+          onClick={() => alert('Demo Mode: Upload Template feature can be customized to organization specifications.')}
+          className="px-4 py-2 rounded-xl bg-brand-900 text-white font-bold text-xs flex items-center gap-2 shadow-sm shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Upload Template</span>
+        </button>
+      </div>
+
+      {/* Templates Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {templates.map((tpl) => (
+          <div
+            key={tpl.id}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between space-y-4 hover:border-brand-400 transition-all"
+          >
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 border border-brand-200/60">
+                  {tpl.category}
+                </span>
+                <span className="font-mono text-xs text-slate-400">v{tpl.version}</span>
+              </div>
+              <h3 className="text-sm font-bold text-navy-950 dark:text-white leading-snug">{tpl.name}</h3>
+              <p className="text-xs text-slate-500 leading-relaxed">{tpl.description}</p>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+              <span>Owner: {tpl.owner}</span>
+              <button
+                onClick={() => alert(`Creating new draft document using "${tpl.name}"`)}
+                className="px-3 py-1.5 rounded-xl bg-navy-900 hover:bg-navy-800 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Use Template</span>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
