@@ -138,11 +138,10 @@ export default function BusinessOperationsPortal() {
 
       {/* Right Column: Sticky Header + Scrollable Content */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <AppHeader />
-
         {/* Scrollable Content Area */}
         <main className="flex-1 overflow-y-auto bg-slate-100 dark:bg-[#0c111d] transition-colors duration-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+            <AppHeader />
 
             {/* Supabase Connection Alert */}
             {!isLoading && dbError && dataSourceMode === 'demo' && (

@@ -71,20 +71,8 @@ export default function AppHeader() {
   }, []);
 
   return (
-    <header className="sticky top-2 z-30 shrink-0 mx-auto max-w-7xl w-[calc(100%-2rem)] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg transition-colors duration-200">
-      {/* Subtitle Banner for POC Disclaimer */}
-      <div className="bg-gradient-to-r from-navy-950 via-slate-900 to-navy-950 px-4 py-1.5 rounded-t-2xl text-center border-b border-white/10 flex items-center justify-between text-[11px] text-slate-300">
-        <div className="flex items-center gap-1.5 mx-auto">
-          <span className="font-extrabold text-amber-400 uppercase tracking-widest bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/40 text-[10px]">
-            Proof of Concept — Demonstration Data
-          </span>
-          <span className="hidden md:inline text-slate-400">
-            Workflows and architecture shown are illustrative and configurable around client specifications.
-          </span>
-        </div>
-      </div>
-
-      <div className="px-5 py-2.5">
+    <header className="sticky top-0 z-30 shrink-0 w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg transition-colors duration-200">
+      <div className="px-5 py-3">
         <div className="flex items-center justify-between gap-4">
 
           {/* Left: Portal Title & Record Count */}
