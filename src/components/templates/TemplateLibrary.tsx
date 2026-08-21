@@ -121,7 +121,7 @@ export default function TemplateLibrary() {
                   createDocument({
                     docNumber: `QMS-TPL-00${Math.floor(Math.random() * 90) + 10}`,
                     title: `Draft: ${tpl.name}`,
-                    docType: tpl.category === 'QMS SOP' ? 'SOP' : tpl.category === 'Quality Policy' ? 'Policy' : 'Form',
+                    docType: tpl.category === 'QMS' ? 'SOP' : 'Form',
                     department: 'Quality Management',
                     ownerName: tpl.owner,
                     description: `New draft generated from template: ${tpl.name}`,
